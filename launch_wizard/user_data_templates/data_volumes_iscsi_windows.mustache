@@ -1,0 +1,137 @@
+<powershell>
+    function Write-LogMessage {
+        param(
+            [string]$Message
+        )
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+        Write-Output "[$timestamp] $Message"
+    }
+
+    function Get-ChapCredentials {
+        param(
+            [Parameter(Mandatory)]
+            [string]$AuthSecretName,
+            [Parameter(Mandatory)]
+            [hashtable]$Params
+        )
+
+        Write-LogMessage "Fetching iSCSI chap credentials from $AuthSecretName"
+        $ChapCredentials = (Get-SECSecretValue -SecretId $AuthSecretName).SecretString | ConvertFrom-Json
+
+        if ([string]::IsNullOrEmpty($ChapCredentials.userid)) {
+            throw "Failed to retrieve CHAP userid from $AuthSecretName"
+        }
+        if ([string]::IsNullOrEmpty($ChapCredentials.password)) {
+            throw "Failed to retrieve CHAP password from $AuthSecretName"
+        }
+
+        if ($ChapCredentials.mutual_password) {
+            Write-LogMessage "Detected mutual CHAP credentials..."
+            Set-IscsiChapSecret -ChapSecret $ChapCredentials.mutual_password
+        }
+
+        $Params.Add('AuthenticationType', $(if ($ChapCredentials.mutual_password) { "MUTUALCHAP" } else { "ONEWAYCHAP" }))
+        $Params.Add('ChapUsername', $ChapCredentials.userid)
+        $Params.Add('ChapSecret', $ChapCredentials.password)
+    }
+
+    function Discover-Target {
+        param(
+            [Parameter(Mandatory)]
+            [string]$TargetIP,
+            [string]$TargetPort,
+            [string]$AuthSecretName
+        )
+
+        $IpPort = $TargetIP + $(if ($TargetPort) { ":$TargetPort" } else { "" })
+        Write-LogMessage "Discovering iSCSI target at $IpPort..."
+
+        $PortalParams = @{
+            TargetPortalAddress = $TargetIP
+        }
+
+        if ($TargetPort) {
+            $PortalParams.Add('TargetPortalPortNumber', $TargetPort)
+        }
+
+        if ($AuthSecretName) {
+            Get-ChapCredentials -AuthSecretName $AuthSecretName -Params $PortalParams
+            Write-LogMessage "Configuring $($PortalParams.AuthenticationType) authentication for target portal $IpPort..."
+    }
+
+        New-IscsiTargetPortal @PortalParams
+    }
+
+    function Connect-Target {
+        param(
+            [Parameter(Mandatory)]
+            [string]$TargetIQN,
+            [Parameter(Mandatory)]
+            [string]$TargetIP,
+            [string]$TargetPort,
+            [string]$AuthSecretName
+        )
+
+        Write-LogMessage "Connecting to iSCSI target $TargetIQN..."
+        $ConnectParams = @{
+            NodeAddress = $TargetIQN
+            TargetPortalAddress = $TargetIP
+            IsMultipathEnabled = $True
+            IsPersistent = $True
+        }
+
+        if ($TargetPort) {
+            $ConnectParams.Add('TargetPortalPortNumber', $TargetPort)
+        }
+
+        if ($AuthSecretName) {
+            Get-ChapCredentials -AuthSecretName $AuthSecretName -Params $ConnectParams
+            Write-LogMessage "Configuring $($ConnectParams.AuthenticationType) authentication for target $TargetIQN..."
+        }
+
+        Connect-IscsiTarget @ConnectParams
+    }
+
+    try {
+        Write-LogMessage "Starting iSCSI configuration..."
+
+        # Start iSCSI service automatically on startup
+        Write-LogMessage "Setting MSiSCSI service to automatic startup..."
+        Set-Service -Name MSiSCSI -StartupType Automatic
+        Write-LogMessage "Starting MSiSCSI service..."
+        Start-Service -Name MSiSCSI
+
+        # Change the IQN
+        Write-LogMessage "Configuring initiator IQN..."
+        $currentNode = (Get-InitiatorPort).NodeAddress
+        Write-LogMessage "Original initiator IQN is $currentNode"
+        Set-InitiatorPort -NodeAddress $currentNode -NewNodeAddress "{{initiatorIQN}}"
+        Write-LogMessage "Successfully set initiator IQN to {{initiatorIQN}}"
+
+        # Restart the iSCSI initiator service to apply the changes
+        Write-LogMessage "Restarting MSiSCSI service to apply IQN change..."
+        Restart-Service -Name MSiSCSI
+
+        # Discover iSCSI targets
+        {{#portals}}
+        Discover-Target -TargetIP "{{ip}}" -TargetPort "{{port}}" -AuthSecretName "{{authSecretName}}"
+        {{/portals}}
+
+        # Connect to iSCSI targets
+        {{#targets}}
+        Connect-Target -TargetIQN "{{iqn}}" -TargetIP "{{ip}}" -TargetPort "{{port}}" -AuthSecretName "{{authSecretName}}"
+        {{/targets}}
+
+        # List iSCSI targets
+        Write-LogMessage "Listing connected iSCSI targets..."
+        $targets = Get-IscsiTarget
+        $targets | ForEach-Object {
+            Write-LogMessage "- Target: $($_.NodeAddress), IsConnected: $($_.IsConnected)"
+        }
+
+        Write-LogMessage "iSCSI configuration completed successfully"
+    } catch {
+        Write-LogMessage "ERROR: $($_.Exception.Message)"
+        throw $_.Exception.Message
+    }
+</powershell>

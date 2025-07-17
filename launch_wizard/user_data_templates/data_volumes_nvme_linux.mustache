@@ -1,0 +1,102 @@
+#!/bin/bash
+
+yum update -y
+yum install -y nvme-cli
+{{#authRequired}}
+yum install -y awscli jq
+{{/authRequired}}
+{{#dmMultipath}}
+yum install -y device-mapper-multipath
+
+cat > /etc/multipath.conf << "EOF"
+blacklist {
+    device {
+        product "Amazon EC2 NVMe Instance Storage"
+    }
+}
+devices {
+    device {
+        vendor "NVME"
+        product ".*"
+        path_grouping_policy group_by_prio
+        path_selector "round-robin 0"
+    }
+}
+EOF
+chmod 0644 /etc/multipath.conf
+{{/dmMultipath}}
+
+log() {
+    local message=${1}
+    echo "[$(date)] ${message}"
+}
+
+connect_target() {
+    local nqn=${1}
+    local ip=${2}
+    local port=${3}
+    local auth_secret_name=${4}
+
+    local cmd="nvme connect -t tcp -a ${ip} -n ${nqn}"
+
+    # Add port if specified
+    [[ -n "${port}" ]] && cmd+=" -s ${port}"
+
+    if [[ -n "${auth_secret_name}" ]]; then
+        log "Fetching DH CHAP keys from ${auth_secret_name}"
+        dh_chap_credentials=$(aws secretsmanager get-secret-value --secret-id ${auth_secret_name} --query SecretString --output text)
+        dh_chap_host_key=$(echo ${dh_chap_credentials} | jq -r '.dh_chap_host_key // empty')
+        dh_chap_ctrl_key=$(echo ${dh_chap_credentials} | jq -r '.dh_chap_ctrl_key // empty')
+        [ -z "${dh_chap_host_key}" ] && log "Failed to retrieve DH CHAP host key from ${auth_secret_name}" && return 1
+
+        log "Setting DH CHAP host key for target ${nqn}..."
+        cmd+=" -S ${dh_chap_host_key}"
+        if [ -n "${dh_chap_ctrl_key}" ]; then
+            log "Detected controller DH CHAP key..."
+            log "Setting DH CHAP controller key for target ${nqn}..."
+            cmd+=" -C ${dh_chap_ctrl_key}"
+        fi
+    fi
+
+    # Execute the command
+    log "Connecting to NVMe subsystem ${nqn}..."
+    eval "${cmd}" > /dev/null || { log "Failed to connect to target ${nqn}" && return 1; }
+}
+
+log "Starting NVMe configuration..."
+
+# Write host NQN file
+log "Configuring host NQN..."
+echo "{{hostNQN}}" > /etc/nvme/hostnqn || (log "Failed to write host NQN" && exit 1)
+log "Successfully configured host NQN {{hostNQN}}"
+
+# Configure nvme_tcp module
+log "Setting up nvme_tcp module..."
+echo "nvme_tcp" | tee /etc/modules-load.d/nvme_tcp.conf > /dev/null
+
+log "Loading nvme_tcp module..."
+modprobe nvme_tcp || (log "Failed to load nvme_tcp module" && exit 1)
+
+{{#dmMultipath}}
+# Configure multipath
+log "Enabling multipath daemon..."
+systemctl enable --now multipathd.service || (log "Failed to enable multipathd" && exit 1)
+{{/dmMultipath}}
+
+# Connect to the NVMe subsystems
+{{#subsystems}}
+connect_target "{{nqn}}" "{{ip}}" "{{port}}" "{{authSecretName}}" || exit 1
+{{/subsystems}}
+
+log "Generating NVMe config"
+nvme config --scan --update || (log "Failed to generate NVMe config" && exit 1)
+
+log "Enabling nvmf-autoconnect service"
+systemctl enable --now nvmf-autoconnect.service || (log "Failed to enable nvmf-autoconnect" && exit 1)
+
+log "Listing connected NVMe subsystems..."
+nvme list-subsys | grep "NQN" | while read -r line; do
+log "- ${line}"
+done || (log "Failed to list NVMe subsystems" && exit 1)
+
+log "NVMe configuration completed successfully"

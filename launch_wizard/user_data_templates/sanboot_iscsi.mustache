@@ -1,0 +1,51 @@
+{{#isMultipart}}
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+
+--==BOUNDARY==
+MIME-Version: 1.0
+Content-Type: text/part-handler; charset="utf-8"
+#part-handler
+
+handler_version = 2
+
+def list_types():
+# return a list of mime-types that are handled by this module
+    return(["text/ipxe"])
+
+def handle_part(data, ctype, filename, payload, frequency):
+    if ctype == "__begin__":
+        return
+    if ctype == "__end__":
+        return
+
+print("Skipping content type text/ipxe")
+
+--==BOUNDARY==
+MIME-Version: 1.0
+Content-Type: text/ipxe; charset="utf-8"
+{{/isMultipart}}
+
+#!ipxe
+
+set initiator-iqn {{initiatorIQN}}
+
+{{#targets}}
+{{#authSecretName}}
+aws_get_boot_creds_from_secret {{.}}
+{{/authSecretName}}
+
+sanboot iscsi:{{ip}}::{{port}}:{{lun}}:{{iqn}}
+{{/targets}}
+
+{{#isMultipart}}
+{{#guestOsScripts}}
+--==BOUNDARY==
+MIME-Version: 1.0
+Content-Type: {{{type}}}; charset="utf-8"
+
+{{{content}}}
+{{/guestOsScripts}}
+
+--==BOUNDARY==--
+{{/isMultipart}}

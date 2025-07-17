@@ -1,0 +1,54 @@
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+
+--==BOUNDARY==
+MIME-Version: 1.0
+Content-Type: text/part-handler; charset="utf-8"
+#part-handler
+
+handler_version = 2
+
+def is_localboot_enabled():
+    import os
+    localboot_file = "/usr/local/bin/localboot"
+    return os.path.exists(localboot_file)
+
+def list_types():
+    if is_localboot_enabled():
+        # We want to execute the localboot bash script explicitly, and ignore the other 2 types of scripts
+        return ["text/localboot", "text/cloud-config", "text/x-shellscript"]
+    else:
+        # We want to ignore the localboot type and let any other content types run natively
+        return ["text/localboot"]
+
+def handle_part(data, ctype, filename, payload, frequency):
+    if ctype in ["__begin__", "__end__"]:
+        return
+
+    import os
+
+    if is_localboot_enabled() and ctype == "text/localboot":
+        os.makedirs("/var/lib/cloud/scripts/per-boot", exist_ok=True)
+        with open("/var/lib/cloud/scripts/per-boot/localboot.sh", "w") as f:
+            f.write(payload)
+        os.chmod("/var/lib/cloud/scripts/per-boot/localboot.sh", 0o755)
+    else:
+        print(f"Skipping {ctype} {filename} in localboot mode")
+
+--==BOUNDARY==
+Content-Type: text/localboot; charset="utf-8"
+MIME-Version: 1.0
+
+{{{dataVolumesAttachmentScript}}}
+echo "Running localboot for target {{bootTarget}}{{#bootLun}} with LUN {{bootLun}}{{/bootLun}}..."
+localboot --target {{bootTarget}}{{#bootLun}} --lun {{bootLun}}{{/bootLun}}
+
+{{#guestOsScripts}}
+--==BOUNDARY==
+MIME-Version: 1.0
+Content-Type: {{{type}}}; charset="utf-8"
+
+{{{content}}}
+{{/guestOsScripts}}
+
+--==BOUNDARY==--

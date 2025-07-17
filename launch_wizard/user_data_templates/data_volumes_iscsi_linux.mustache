@@ -1,0 +1,130 @@
+#!/bin/bash
+
+yum update -y
+yum install -y iscsi-initiator-utils
+{{#authRequired}}
+yum install -y awscli jq
+{{/authRequired}}
+
+log() {
+    local message=${1}
+    echo "[$(date)] ${message}"
+}
+
+discover_target() {
+    local ip=${1}
+    local port=${2}
+    local auth_secret_name=${3}
+    local ip_port="${ip}${port:+:$port}"
+
+    iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=new > /dev/null || return 1
+
+    if [ -n "${auth_secret_name}" ]; then
+        log "Fetching iSCSI chap credentials from ${auth_secret_name}"
+        chap_credentials=$(aws secretsmanager get-secret-value --secret-id ${auth_secret_name} --query SecretString --output text)
+        chap_user=$(echo ${chap_credentials} | jq -r '.userid // empty')
+        chap_pass=$(echo ${chap_credentials} | jq -r '.password // empty')
+        chap_mutual_user=$(echo ${chap_credentials} | jq -r '.mutual_userid // empty')
+        chap_mutual_password=$(echo ${chap_credentials} | jq -r '.mutual_password // empty')
+        [ -z "${chap_user}" ] && log "Failed to retrieve CHAP userid from ${auth_secret_name}" && return 1
+        [ -z "${chap_pass}" ] && log "Failed to retrieve CHAP password from ${auth_secret_name}" && return 1
+
+        log "Configuring CHAP authentication for discovery portal ${ip_port}..."
+        iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=update --name=discovery.sendtargets.auth.authmethod --value=CHAP > /dev/null || return 1
+        iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=update --name=discovery.sendtargets.auth.username --value=${chap_user} > /dev/null || return 1
+        iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=update --name=discovery.sendtargets.auth.password --value=${chap_pass} > /dev/null || return 1
+        if [ -n "${chap_mutual_user}" ] && [ -n "${chap_mutual_password}" ]; then
+            log "Detected mutual CHAP credentials..."
+            log "Configuring mutual CHAP authentication for discovery portal ${ip_port}..."
+            iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=update --name=discovery.sendtargets.auth.username_in --value=${chap_mutual_user} > /dev/null || return 1
+            iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --op=update --name=discovery.sendtargets.auth.password_in --value=${chap_mutual_password} > /dev/null || return 1
+        fi
+    fi
+
+    log "Discovering iSCSI target at ${ip_port}..."
+    iscsiadm -m discoverydb -t sendtargets -p ${ip_port} --discover > /dev/null || {
+        log "Failed to discover iSCSI target at ${ip_port}"
+        return 1
+    }
+}
+
+connect_target() {
+    local iqn=${1}
+    local ip=${2}
+    local port=${3}
+    local auth_secret_name=${4}
+    local ip_port="${ip}${port:+:$port}"
+
+    if [ -n "${auth_secret_name}" ]; then
+        log "Fetching iSCSI chap credentials from ${auth_secret_name}"
+        chap_credentials=$(aws secretsmanager get-secret-value --secret-id ${auth_secret_name} --query SecretString --output text)
+        chap_user=$(echo ${chap_credentials} | jq -r '.userid // empty')
+        chap_pass=$(echo ${chap_credentials} | jq -r '.password // empty')
+        chap_mutual_user=$(echo ${chap_credentials} | jq -r '.mutual_userid // empty')
+        chap_mutual_password=$(echo ${chap_credentials} | jq -r '.mutual_password // empty')
+        [ -z "${chap_user}" ] && log "Failed to retrieve CHAP userid from ${auth_secret_name}" && return 1
+        [ -z "${chap_pass}" ] && log "Failed to retrieve CHAP password from ${auth_secret_name}" && return 1
+
+        log "Configuring CHAP authentication for target ${iqn}..."
+        iscsiadm -m node -T ${iqn} -p ${ip_port} --op=update --name=node.session.auth.authmethod --value=CHAP > /dev/null || return 1
+        iscsiadm -m node -T ${iqn} -p ${ip_port} --op=update --name=node.session.auth.username --value=${chap_user} > /dev/null || return 1
+        iscsiadm -m node -T ${iqn} -p ${ip_port} --op=update --name=node.session.auth.password --value=${chap_pass} > /dev/null || return 1
+        if [ -n "${chap_mutual_user}" ] && [ -n "${chap_mutual_password}" ]; then
+            log "Detected mutual CHAP credentials..."
+            log "Configuring mutual CHAP authentication for target ${iqn}..."
+            iscsiadm -m node -T ${iqn} -p ${ip_port} --op=update --name=node.session.auth.username_in --value=${chap_mutual_user} > /dev/null || return 1
+            iscsiadm -m node -T ${iqn} -p ${ip_port} --op=update --name=node.session.auth.password_in --value=${chap_mutual_password} > /dev/null || return 1
+        fi
+    fi
+
+    log "Enabling port ${port} for iscsi service"
+    semanage port -a -t iscsi_port_t -p tcp ${port} > /dev/null
+
+    log "Connecting to iSCSI target ${iqn}..."
+    iscsiadm -m node -T ${iqn} -p ${ip_port} --login > /dev/null || return 1
+
+    log "Configuring automatic logging in for target ${iqn}..."
+    iscsiadm -m node -T ${iqn} -p ${ip_port} --op update -n node.startup -v automatic > /dev/null || return 1
+
+    log "Successfully configured target ${iqn}"
+}
+
+log "Starting iSCSI configuration..."
+
+# Configure the iSCSI startup process (iscsi) and the iSCSI daemon (iscsid) to start after each reboot
+log "Starting iscsi service..."
+systemctl enable --now iscsi > /dev/null || (log "Failed to enable iscsi service" && exit 1)
+log "Starting iscsid service..."
+systemctl enable --now iscsid > /dev/null || (log "Failed to enable iscsid service" && exit 1)
+log "Successfully enabled iSCSI services"
+
+# Path to the iSCSI initiator name file
+IQN_FILE="/etc/iscsi/initiatorname.iscsi"
+log "Configuring initiator IQN..."
+log "Original initiator IQN is $(cat /etc/iscsi/initiatorname.iscsi | grep "InitiatorName=" | cut -d"=" -f2)"
+# Backup the original IQN file
+cp ${IQN_FILE} ${IQN_FILE}.bak > /dev/null || (log "Failed to back up initiator IQN file" && exit 1)
+# Replace the IQN in the file
+echo "InitiatorName={{initiatorIQN}}" > ${IQN_FILE} || (log "Failed to set new initiator IQN" && exit 1)
+log "Successfully set initiator IQN to {{initiatorIQN}}"
+# Restart the iSCSI initiator service to apply the changes
+systemctl restart iscsid > /dev/null || (log "Failed to restart iscsid service" && exit 1)
+
+# Discover the iSCSI targets
+{{#portals}}
+discover_target "{{ip}}" "{{port}}" "{{authSecretName}}" || (log "Failed to discover iSCSI targets" && exit 1)
+{{/portals}}
+
+# Connect to the iSCSI targets
+{{#targets}}
+connect_target "{{iqn}}" "{{ip}}" "{{port}}" "{{authSecretName}}" || (log "Failed to connect to iSCSI target {{iqn}}" && exit 1)
+{{/targets}}
+
+# List the target IQNs of connected iSCSI sessions
+log "Listing connected iSCSI targets..."
+
+iscsiadm -m session | while read -r line; do
+    log "- $(echo "${line}" | awk '{print $4}')"
+done || (log "Failed to list iSCSI targets" && exit 1)
+
+log "iSCSI configuration completed successfully"
