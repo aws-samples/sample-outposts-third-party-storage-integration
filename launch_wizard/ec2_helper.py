@@ -955,15 +955,15 @@ def launch_instance(
                 {
                     "DeviceIndex": 0,
                     "SubnetId": subnet_id,
+                    "Groups": [security_group_id],
                 },
                 # LNI
                 {
                     "DeviceIndex": 1,
                     "SubnetId": subnet_id,
+                    "Groups": [security_group_id],
                 },
             ]
-
-            instance_params["SecurityGroupIds"] = [security_group_id]
         else:
             # Create a network interface and associate it with the CoIP
             network_interface_id = create_network_interface_with_coip(ec2_client, subnet_id, security_group_id)
@@ -1141,6 +1141,8 @@ def launch_instance_helper_iscsi(
         "portals": portals,
         "targets": targets,
         "guestOsScripts": [],  # Temporary
+        "isOutpostServer": outpost_hardware_type == OutpostHardwareType.SERVER,
+        "lniIndex": 1
     }
 
     user_data = render_user_data(feature_name, guest_os_type, StorageProtocol.ISCSI, user_data_inputs)

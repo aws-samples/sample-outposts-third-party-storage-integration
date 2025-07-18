@@ -28,6 +28,14 @@ Content-Type: text/ipxe; charset="utf-8"
 
 #!ipxe
 
+{{#isOutpostServer}}
+ifclose
+ifopen net{{lniIndex}}
+dhcp --timeout 5000 net{{lniIndex}}
+route ||
+ifstat ||
+{{/isOutpostServer}}
+
 set initiator-iqn {{initiatorIQN}}
 
 {{#targets}}
