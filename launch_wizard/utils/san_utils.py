@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 import typer
 
-from launch_wizard.constants import AWS_IQN_PREFIX, AWS_NQN_PREFIX
+from launch_wizard.common.constants import AWS_IQN_PREFIX, AWS_NQN_PREFIX
 
 from .ui_utils import auto_confirm
 

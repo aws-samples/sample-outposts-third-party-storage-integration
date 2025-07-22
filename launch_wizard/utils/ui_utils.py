@@ -9,7 +9,7 @@ from rich.console import Console, Group, RenderableType
 from rich.panel import Panel
 from rich.text import Text
 
-from launch_wizard import global_state
+from launch_wizard.common.config import global_config
 
 
 def auto_confirm(message: str) -> bool:
@@ -23,7 +23,7 @@ def auto_confirm(message: str) -> bool:
         True if confirmed, False otherwise.
     """
 
-    if global_state.assume_yes:
+    if global_config.assume_yes:
         typer.echo(f"{message} [auto-yes]")
         return True
     return typer.confirm(message)

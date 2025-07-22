@@ -1,4 +1,8 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+"""
+AWS EC2 core operations and helper functions.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import boto3
 import typer
@@ -7,21 +11,26 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.pretty import Pretty
 
-from launch_wizard.constants import (
-    DEFAULT_MINIMUM_ROOT_VOLUME_SIZE,
+from launch_wizard.aws.iam import get_available_instance_profile_names
+from launch_wizard.aws.pagination import paginate_aws_response
+from launch_wizard.common.constants import DEFAULT_MINIMUM_ROOT_VOLUME_SIZE, VERIFIED_AMIS
+from launch_wizard.common.enums import (
+    EBSVolumeType,
+    FeatureName,
+    OperationSystemType,
+    OutpostHardwareType,
+    StorageProtocol,
+)
+from launch_wizard.common.error_codes import (
     ERR_AWS_AMI_NOT_FOUND,
     ERR_AWS_CLIENT,
     ERR_AWS_INSTANCE_PROFILE_NOT_FOUND,
-    ERR_AWS_INSTANCE_TYPE_UNSUPPORTED,
     ERR_AWS_KEY_PAIR_NOT_FOUND,
     ERR_AWS_SECURITY_GROUP_NOT_FOUND,
     ERR_AWS_SUBNET_LNI_CONFIG_INVALID,
     ERR_AWS_SUBNET_NOT_FOUND,
-    ERR_AWS_UNSUPPORTED_HARDWARE_TYPE,
     ERR_USER_ABORT,
-    VERIFIED_AMIS,
 )
-from launch_wizard.enums import EBSVolumeType, FeatureName, OperationSystemType, OutpostHardwareType, StorageProtocol
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import (
     print_table_with_multiple_columns,
@@ -30,54 +39,6 @@ from launch_wizard.utils.display_utils import (
 )
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
 from launch_wizard.utils.user_data_utils import render_user_data
-
-
-def paginate_aws_response(
-    client_method: Callable, response_key: str, next_token_key: str = "NextToken", **kwargs: Any
-) -> List[Dict[str, Any]]:
-    """
-    Handle paginated AWS API responses by collecting all items across multiple pages.
-
-    This function automatically handles pagination for AWS API calls that return paginated results,
-    collecting all items from all pages into a single list.
-
-    Args:
-        client_method: The boto3 client method to call (e.g., ec2_client.describe_subnets).
-        response_key: The key in the response that contains the list of items.
-        next_token_key: The key used for pagination token. Defaults to "NextToken".
-        **kwargs: Additional parameters to pass to the client method.
-
-    Returns:
-        List of all items collected from all pages of the API response.
-
-    Raises:
-        typer.Exit: If an AWS client error occurs during the API calls.
-    """
-
-    all_items = []
-    next_token = None
-
-    try:
-        while True:
-            # Prepare parameters for the API call
-            params = kwargs.copy()
-            if next_token:
-                params[next_token_key] = next_token
-
-            # Make the API call
-            response = client_method(**params)
-
-            # Add items from this page to our list
-            all_items.extend(response.get(response_key, []))
-
-            # Check if there are more results
-            next_token = response.get(next_token_key)
-            if not next_token:
-                break
-    except ClientError as e:
-        error_and_exit(str(e), code=ERR_AWS_CLIENT)
-
-    return all_items
 
 
 def validate_ami(ec2_client: boto3.client, ami_id: Optional[str]) -> str:
@@ -209,49 +170,6 @@ def validate_network(ec2_client: boto3.client, subnet_id: str, outpost_hardware_
             )
     except ClientError as e:
         error_and_exit(str(e), code=ERR_AWS_CLIENT)
-
-
-def validate_instance_type(
-    outposts_client: boto3.client,
-    instance_type: Optional[str],
-    outpost_id: str,
-) -> str:
-    """
-    Validate that the specified instance type is available on the target Outpost.
-
-    This function retrieves all available instance types for the specified Outpost and validates
-    that the provided instance type is supported. If no instance type is provided, it displays
-    available options and prompts the user to select one.
-
-    Args:
-        outposts_client: The boto3 Outposts client for AWS API calls.
-        instance_type: The instance type to validate. If None, the user will be prompted to select one.
-        outpost_id: The ID or ARN of the Outpost to check instance type availability.
-
-    Returns:
-        The validated instance type as a string.
-
-    Raises:
-        typer.Exit: If the instance type is not available on the Outpost or if an AWS error occurs.
-    """
-
-    available_instance_types = get_available_instance_types(outposts_client, outpost_id)
-
-    if not instance_type:
-        print_table_with_single_column(
-            "Available instance types for this Outpost", available_instance_types, column_name="Instance Type"
-        )
-
-        instance_type = typer.prompt("Please enter an instance type")
-        instance_type = cast(str, instance_type)
-
-    if instance_type not in available_instance_types:
-        error_and_exit(
-            f"Instance type {style_var(instance_type, color='yellow')} is not available on this Outpost.",
-            code=ERR_AWS_INSTANCE_TYPE_UNSUPPORTED,
-        )
-
-    return instance_type
 
 
 def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) -> Optional[str]:
@@ -551,80 +469,6 @@ def get_available_subnets_for_outposts(ec2_client: boto3.client) -> List[Dict[st
     return result
 
 
-def get_outpost_hardware_type(outposts_client: boto3.client, outpost_arn: str) -> OutpostHardwareType:
-    """
-    Determine the hardware type of the specified AWS Outpost.
-
-    This function queries the Outpost details to determine whether it's a RACK or SERVER
-    hardware type. This information is important for network configuration, as SERVER
-    hardware requires Local Network Interface (LNI) configuration for proper connectivity.
-
-    Args:
-        outposts_client: The boto3 Outposts client for AWS API calls.
-        outpost_arn: The ARN of the Outpost to query.
-
-    Returns:
-        The hardware type of the Outpost (RACK or SERVER).
-
-    Raises:
-        typer.Exit: If the Outpost is not found, has an unsupported hardware type, or if an AWS error occurs.
-    """
-
-    # Check if the device is a rack or a server.
-    # Validate that the subnet has properly setup LNI defaults.
-    # On Outpost Servers, without an LNI an instance won't be able to connect to the
-    # the on-premise network, which is not the VPC subnet that the instance will be
-    # launched into.
-    try:
-        get_outpost_response = outposts_client.get_outpost(OutpostId=outpost_arn)
-    except ClientError as e:
-        error_and_exit(str(e), code=ERR_AWS_CLIENT)
-
-    outpost = get_outpost_response["Outpost"]
-
-    try:
-        outpost_hardware_type = OutpostHardwareType(outpost["SupportedHardwareType"])
-        Console().print(f"This Outpost is a {style_var(outpost_hardware_type.value)}.")
-    except ValueError:
-        error_and_exit(
-            f"The hardware type {style_var(outpost['SupportedHardwareType'], color='yellow')} is not supported.",
-            code=ERR_AWS_UNSUPPORTED_HARDWARE_TYPE,
-        )
-
-    return outpost_hardware_type
-
-
-def get_available_instance_types(outposts_client: boto3.client, outpost_id: str) -> List[str]:
-    """
-    Retrieve all instance types available on the specified AWS Outpost.
-
-    This function queries the Outpost to get a list of all instance types that are
-    configured and available for launching instances.
-
-    Args:
-        outposts_client: The boto3 Outposts client for AWS API calls.
-        outpost_id: The ID or ARN of the Outpost to query.
-
-    Returns:
-        A list of available instance type names as strings.
-
-    Raises:
-        typer.Exit: If an AWS error occurs during the API call.
-    """
-
-    # Use the paginate function to get all instance types
-    instance_type_response_items = paginate_aws_response(
-        outposts_client.get_outpost_instance_types, "InstanceTypes", OutpostId=outpost_id
-    )
-
-    # Extract the InstanceTypes property from each response item
-    available_instance_types = [
-        instance_type_response_item["InstanceType"] for instance_type_response_item in instance_type_response_items
-    ]
-
-    return available_instance_types
-
-
 def get_available_key_pair_names(ec2_client: boto3.client) -> List[str]:
     """
     Retrieve all key pair names available in the AWS account.
@@ -672,35 +516,6 @@ def get_available_security_group_ids(ec2_client: boto3.client) -> List[str]:
     available_security_group_ids = [security_group["GroupId"] for security_group in available_security_groups]
 
     return available_security_group_ids
-
-
-def get_available_instance_profile_names(iam_client: boto3.client) -> List[str]:
-    """
-    Retrieve all IAM instance profile names available in the AWS account.
-
-    This function queries all IAM instance profiles in the account and returns their names
-    for use in granting AWS service permissions to EC2 instances.
-
-    Args:
-        iam_client: The boto3 IAM client for AWS API calls.
-
-    Returns:
-        A list of instance profile names as strings.
-
-    Raises:
-        typer.Exit: If an AWS error occurs during the API call.
-    """
-
-    # IAM uses different pagination parameters - "Marker" instead of "NextToken"
-    available_instance_profiles = paginate_aws_response(
-        iam_client.list_instance_profiles, "InstanceProfiles", next_token_key="Marker"
-    )
-
-    available_instance_profile_names = [
-        instance_profile["InstanceProfileName"] for instance_profile in available_instance_profiles
-    ]
-
-    return available_instance_profile_names
 
 
 def get_root_volume_device_name(ec2_client: boto3.client, ami_id: str) -> str:
@@ -864,33 +679,6 @@ def create_network_interface_with_coip(ec2_client: boto3.client, subnet_id: str,
         )
 
         return network_interface_id
-    except ClientError as e:
-        error_and_exit(str(e), code=ERR_AWS_CLIENT)
-
-
-def get_available_secret_names(secrets_manager_client: boto3.client) -> List[str]:
-    """
-    Retrieve all authentication secret names from AWS Secrets Manager.
-
-    This function queries AWS Secrets Manager to get a list of all available secrets
-    that can be used for storage array authentication during instance configuration.
-
-    Args:
-        secrets_manager_client: The boto3 Secrets Manager client for AWS API calls.
-
-    Returns:
-        A list of secret names as strings.
-
-    Raises:
-        typer.Exit: If an AWS error occurs during the API call.
-    """
-
-    try:
-        available_secrets = paginate_aws_response(secrets_manager_client.list_secrets, "SecretList")
-
-        available_secret_names = [secret["Name"] for secret in available_secrets]
-
-        return available_secret_names
     except ClientError as e:
         error_and_exit(str(e), code=ERR_AWS_CLIENT)
 
@@ -1142,7 +930,7 @@ def launch_instance_helper_iscsi(
         "targets": targets,
         "guestOsScripts": [],  # Temporary
         "isOutpostServer": outpost_hardware_type == OutpostHardwareType.SERVER,
-        "lniIndex": 1
+        "lniIndex": 1,
     }
 
     user_data = render_user_data(feature_name, guest_os_type, StorageProtocol.ISCSI, user_data_inputs)

@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.pretty import Pretty
 from rich.rule import Rule
 
-from launch_wizard.constants import ERR_INPUT_INVALID, ERR_PURE_API, ERR_USER_ABORT, ERR_VOLUME_NOT_FOUND
+from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_PURE_API, ERR_USER_ABORT, ERR_VOLUME_NOT_FOUND
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit

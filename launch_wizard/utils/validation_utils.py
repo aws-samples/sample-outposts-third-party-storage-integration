@@ -13,14 +13,10 @@ import typer
 from rich.console import Console
 from rich.rule import Rule
 
-from launch_wizard.constants import (
-    ALLOWED_STORAGE_TARGET_LIMITS,
-    ERR_FEATURE_NOT_SUPPORTED,
-    ERR_INPUT_INVALID,
-    OPTIONAL_VALUE_NONE_PLACEHOLDER,
-)
-from launch_wizard.ec2_helper import get_available_secret_names
-from launch_wizard.enums import FeatureName, OperationSystemType, StorageProtocol
+from launch_wizard.aws.secrets_manager import get_available_secret_names
+from launch_wizard.common.constants import ALLOWED_STORAGE_TARGET_LIMITS, OPTIONAL_VALUE_NONE_PLACEHOLDER
+from launch_wizard.common.enums import FeatureName, OperationSystemType, StorageProtocol
+from launch_wizard.common.error_codes import ERR_FEATURE_NOT_SUPPORTED, ERR_INPUT_INVALID
 
 from .display_utils import print_table_with_single_column, style_var
 from .ui_utils import auto_confirm, error_and_exit

@@ -6,14 +6,13 @@ from netapp_ontap.resources import NvmeInterface, NvmeSubsystem, NvmeSubsystemHo
 from rich.console import Console
 from rich.rule import Rule
 
-from launch_wizard.constants import (
+from launch_wizard.common.constants import NETAPP_DUPLICATE_NQN_ERR_CODE, NETAPP_NVME_TCP_PROTOCOL_NAME
+from launch_wizard.common.error_codes import (
     ERR_ENDPOINT_NOT_FOUND,
     ERR_INPUT_INVALID,
     ERR_NETAPP_API,
     ERR_SUBSYSTEM_NOT_FOUND,
     ERR_USER_ABORT,
-    NETAPP_DUPLICATE_NQN_ERR_CODE,
-    NETAPP_NVME_TCP_PROTOCOL_NAME,
 )
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
@@ -80,9 +79,11 @@ def netapp_get_nvme_subsystems(nvme_subsystem_names: Optional[List[str]]) -> Lis
     selected_nvme_subsystems = []
     for nvme_subsystem_name in nvme_subsystem_names:
         # Find the subsystem from available subsystems
-        nvme_subsystem = find_first_by_property(items=available_nvme_subsystems, key="name", value=nvme_subsystem_name)
-        if nvme_subsystem:
-            selected_nvme_subsystems.append(nvme_subsystem)
+        selected_nvme_subsystem = find_first_by_property(
+            items=available_nvme_subsystems, key="name", value=nvme_subsystem_name
+        )
+        if selected_nvme_subsystem:
+            selected_nvme_subsystems.append(selected_nvme_subsystem)
         else:
             error_and_exit(
                 f"NVMe subsystem {style_var(nvme_subsystem_name, color='yellow')} does not exist.",

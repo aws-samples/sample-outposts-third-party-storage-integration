@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.pretty import Pretty
 from rich.rule import Rule
 
-from launch_wizard.constants import ERR_ENDPOINT_NOT_FOUND, ERR_INPUT_INVALID, ERR_PURE_API
+from launch_wizard.common.error_codes import ERR_ENDPOINT_NOT_FOUND, ERR_INPUT_INVALID, ERR_PURE_API
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import parse_ip_and_port, validate_ip_list

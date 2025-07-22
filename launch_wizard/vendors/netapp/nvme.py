@@ -5,15 +5,10 @@ from netapp_ontap import HostConnection, config
 from rich.console import Console
 from typing_extensions import Annotated
 
-from launch_wizard.constants import ERR_USER_ABORT, OPTIONAL_VALUE_NONE_PLACEHOLDER
-from launch_wizard.ec2_helper import launch_instance_helper_nvme
-from launch_wizard.enums import StorageProtocol
-from launch_wizard.netapp.nvme_utils import (
-    netapp_add_host_to_subsystems,
-    netapp_get_nvme_interfaces,
-    netapp_get_nvme_subsystems,
-    netapp_get_subsystems_with_matching_nvme_interfaces,
-)
+from launch_wizard.aws.ec2 import launch_instance_helper_nvme
+from launch_wizard.common.constants import OPTIONAL_VALUE_NONE_PLACEHOLDER
+from launch_wizard.common.enums import StorageProtocol
+from launch_wizard.common.error_codes import ERR_USER_ABORT
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip, validate_ip_list
 from launch_wizard.utils.san_utils import generate_or_input_host_nqn
@@ -24,6 +19,12 @@ from launch_wizard.utils.validation_utils import (
     validate_enable_dm_multipath,
     validate_feature,
     validate_storage_target_count,
+)
+from launch_wizard.vendors.netapp.nvme_utils import (
+    netapp_add_host_to_subsystems,
+    netapp_get_nvme_interfaces,
+    netapp_get_nvme_subsystems,
+    netapp_get_subsystems_with_matching_nvme_interfaces,
 )
 
 
