@@ -14,7 +14,7 @@ A Python-based solution for launching EC2 instances on Outposts that connect to 
 
 ### 2. VMIE (VM Import/Export)
 
-A comprehensive Python implementation of the VM Import/Export tool for AWS EC2. This tool provides a complete solution for importing VM images to AWS EC2 and exporting AMIs to RAW format, with support for sanbootable installation for sanboot support.
+A comprehensive Python implementation of the VM Import/Export tool for AWS EC2. This tool provides a complete solution for importing VM images to AWS EC2 and exporting AMIs to RAW format, leveraging the [AWS EC2 VM Import/Export service](https://aws.amazon.com/ec2/vm-import/). Includes support for sanbootable installation for sanboot compatibility.
 
 [Learn more about VMIE →](./vmie/README.md)
 
