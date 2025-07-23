@@ -471,8 +471,8 @@ Key constants can be found in `vmie/common/constants.py`:
 ```python
 INSTANCE_TYPE = "t3.micro"
 DEFAULT_INSTANCE_PROFILE = "VMIEInstanceProfile"
-IMPORT_TIMEOUT_MINUTES = 60
-EXPORT_TIMEOUT_MINUTES = 90
+IMPORT_TIMEOUT_MINUTES = 60 * 12
+EXPORT_TIMEOUT_MINUTES = 60 * 12
 SUPPORTED_FORMATS = {
     "ova": [".ova"],
     "vmdk": [".vmdk"],

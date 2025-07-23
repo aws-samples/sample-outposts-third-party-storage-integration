@@ -8,8 +8,8 @@ from typing import Dict, List
 INSTANCE_TYPE = "t3.micro"
 DEFAULT_INSTANCE_PROFILE = "VMIEInstanceProfile"
 DEFAULT_TIMEOUT_MINUTES = 60
-IMPORT_TIMEOUT_MINUTES = 60
-EXPORT_TIMEOUT_MINUTES = 90
+IMPORT_TIMEOUT_MINUTES = 60 * 12
+EXPORT_TIMEOUT_MINUTES = 60 * 12
 
 # Supported image formats and their extensions
 SUPPORTED_FORMATS: Dict[str, List[str]] = {
