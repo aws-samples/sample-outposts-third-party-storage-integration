@@ -11,6 +11,7 @@ from typing_extensions import Annotated
 
 from launch_wizard.aws.ec2 import (
     validate_ami,
+    validate_instance_name,
     validate_instance_profile,
     validate_key_pair,
     validate_network,
@@ -56,6 +57,7 @@ def main_command(
     instance_profile_name: Annotated[
         Optional[str], typer.Option(help="IAM instance profile name to attach to the instance")
     ] = None,
+    instance_name: Annotated[Optional[str], typer.Option(help="Name to assign to the EC2 instance")] = None,
     root_volume_size: Annotated[Optional[int], typer.Option(help="Size of the root volume in GiB")] = None,
     root_volume_type: Annotated[Optional[EBSVolumeType], typer.Option(help="Type of the root volume to attach")] = None,
     assume_yes: Annotated[
@@ -80,6 +82,7 @@ def main_command(
         key_name: Key pair name for SSH access (optional).
         security_group_id: Security group ID to associate with the instance (optional).
         instance_profile_name: IAM instance profile name to attach to the instance (optional).
+        instance_name: Name to assign to the EC2 instance (optional, will prompt if not provided).
         root_volume_size: Size of the root volume in GiB (optional).
         root_volume_type: Type of the root volume to attach (optional).
         assume_yes: Automatically answer yes to all prompts (optional).
@@ -105,6 +108,7 @@ def main_command(
     key_name = validate_key_pair(ec2_client, key_name)
     security_group_id = validate_security_group(ec2_client, security_group_id)
     instance_profile_name = validate_instance_profile(iam_client, instance_profile_name)
+    instance_name = validate_instance_name(instance_name)
 
     # Validate and prompt for root volume options if needed
     root_volume_size, root_volume_type, root_volume_device_name = validate_root_volume_options(
@@ -126,6 +130,7 @@ def main_command(
             "key_name": key_name,
             "security_group_id": security_group_id,
             "instance_profile_name": instance_profile_name,
+            "instance_name": instance_name,
             "root_volume_device_name": root_volume_device_name,
             "root_volume_size": root_volume_size,
             "root_volume_type": root_volume_type,

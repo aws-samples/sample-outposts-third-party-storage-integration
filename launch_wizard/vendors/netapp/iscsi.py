@@ -188,6 +188,7 @@ def iscsi(
         key_name=ctx.obj["key_name"],
         security_group_id=ctx.obj["security_group_id"],
         instance_profile_name=ctx.obj["instance_profile_name"],
+        instance_name=ctx.obj["instance_name"],
         root_volume_device_name=ctx.obj["root_volume_device_name"],
         root_volume_size=ctx.obj["root_volume_size"],
         root_volume_type=ctx.obj["root_volume_type"],

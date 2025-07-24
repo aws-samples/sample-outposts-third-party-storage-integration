@@ -297,6 +297,31 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
     return instance_profile_name
 
 
+def validate_instance_name(instance_name: Optional[str]) -> Optional[str]:
+    """
+    Validate and prompt for EC2 instance name if not provided.
+
+    This function handles the instance name parameter. If no instance name is provided,
+    it prompts the user to enter one. The instance name will be used as the 'Name' tag
+    for the EC2 instance.
+
+    Args:
+        instance_name: The instance name to validate. If None, the user will be prompted.
+
+    Returns:
+        The validated instance name as a string, or None if the user chooses to proceed without one.
+    """
+
+    if not instance_name:
+        if auto_confirm("No instance name specified. Would you like to proceed without naming the instance?"):
+            return None
+
+        instance_name = typer.prompt("Please enter an instance name")
+        instance_name = cast(str, instance_name)
+
+    return instance_name
+
+
 def validate_root_volume_options(
     ec2_client: boto3.client, ami_id: str, root_volume_size: Optional[int], root_volume_type: Optional[EBSVolumeType]
 ) -> Tuple[Optional[int], Optional[EBSVolumeType], Optional[str]]:
@@ -693,6 +718,7 @@ def launch_instance(
     key_name: Optional[str] = None,
     security_group_id: Optional[str] = None,
     instance_profile_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
     root_volume_device_name: Optional[str] = None,
     root_volume_size: Optional[int] = None,
     root_volume_type: Optional[EBSVolumeType] = None,
@@ -714,6 +740,7 @@ def launch_instance(
         key_name: The key pair name for SSH access (optional).
         security_group_id: The security group ID to associate (optional, uses default if not provided).
         instance_profile_name: The IAM instance profile name to attach (optional).
+        instance_name: The name to assign to the instance as a 'Name' tag (optional).
         root_volume_device_name: The root volume device name for custom configuration (optional).
         root_volume_size: The root volume size in GiB (optional).
         root_volume_type: The root volume type (optional).
@@ -779,6 +806,12 @@ def launch_instance(
             if root_volume_type:
                 instance_params["BlockDeviceMappings"][0]["Ebs"]["VolumeType"] = root_volume_type
 
+        # Add Name tag if instance_name is provided
+        if instance_name:
+            instance_params["TagSpecifications"] = [
+                {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": instance_name}]}
+            ]
+
         Console().print("Launching the EC2 instance...")
         # Launch the instance
         run_instances_response = ec2_client.run_instances(**instance_params)
@@ -805,6 +838,7 @@ def launch_instance_helper_nvme(
     enable_dm_multipath: Optional[bool],
     security_group_id: Optional[str],
     instance_profile_name: Optional[str],
+    instance_name: Optional[str],
     root_volume_device_name: Optional[str],
     root_volume_size: Optional[int],
     root_volume_type: Optional[EBSVolumeType],
@@ -831,6 +865,7 @@ def launch_instance_helper_nvme(
         enable_dm_multipath: Whether to enable Device Mapper Multipath (optional).
         security_group_id: The security group ID to associate (optional).
         instance_profile_name: The IAM instance profile name to attach (optional).
+        instance_name: The name to assign to the instance as a 'Name' tag (optional).
         root_volume_device_name: The root volume device name for custom configuration (optional).
         root_volume_size: The root volume size in GiB (optional).
         root_volume_type: The root volume type (optional).
@@ -869,6 +904,7 @@ def launch_instance_helper_nvme(
         key_name=key_name,
         security_group_id=security_group_id,
         instance_profile_name=instance_profile_name,
+        instance_name=instance_name,
         root_volume_device_name=root_volume_device_name,
         root_volume_size=root_volume_size,
         root_volume_type=root_volume_type,
@@ -886,6 +922,7 @@ def launch_instance_helper_iscsi(
     key_name: Optional[str],
     security_group_id: Optional[str],
     instance_profile_name: Optional[str],
+    instance_name: Optional[str],
     root_volume_device_name: Optional[str],
     root_volume_size: Optional[int],
     root_volume_type: Optional[EBSVolumeType],
@@ -912,6 +949,7 @@ def launch_instance_helper_iscsi(
         key_name: The key pair name for SSH access (optional).
         security_group_id: The security group ID to associate (optional).
         instance_profile_name: The IAM instance profile name to attach (optional).
+        instance_name: The name to assign to the instance as a 'Name' tag (optional).
         root_volume_device_name: The root volume device name for custom configuration (optional).
         root_volume_size: The root volume size in GiB (optional).
         root_volume_type: The root volume type (optional).
@@ -952,6 +990,7 @@ def launch_instance_helper_iscsi(
         key_name=key_name,
         security_group_id=security_group_id,
         instance_profile_name=instance_profile_name,
+        instance_name=instance_name,
         root_volume_device_name=root_volume_device_name,
         root_volume_size=root_volume_size,
         root_volume_type=root_volume_type,
