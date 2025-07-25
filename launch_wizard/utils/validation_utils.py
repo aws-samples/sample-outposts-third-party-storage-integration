@@ -9,7 +9,6 @@ that user inputs are valid and compatible with the selected features and storage
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import boto3
-import typer
 from rich.console import Console
 from rich.rule import Rule
 
@@ -19,7 +18,7 @@ from launch_wizard.common.enums import FeatureName, OperationSystemType, Storage
 from launch_wizard.common.error_codes import ERR_FEATURE_NOT_SUPPORTED, ERR_INPUT_INVALID
 
 from .display_utils import print_table_with_single_column, style_var
-from .ui_utils import auto_confirm, error_and_exit
+from .ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 
 
 def validate_feature(feature_name: FeatureName, guest_os_type: OperationSystemType, protocol: StorageProtocol) -> None:
@@ -114,7 +113,7 @@ def validate_lun_for_feature(lun: Optional[int], feature_name: FeatureName) -> O
             if not auto_confirm(
                 "No LUN (Logical Unit Number) specified. Would you like to proceed with the default LUN 0?"
             ):
-                lun = typer.prompt("Please enter a LUN value", default=0)
+                lun = prompt_with_trim("Please enter a LUN value", default=0)
 
         if lun is not None:
             try:
@@ -221,7 +220,7 @@ def validate_auth_secret_names_for_targets(
         auth_secret_names = []
 
         for target in targets:
-            auth_secret_name = typer.prompt(
+            auth_secret_name = prompt_with_trim(
                 f"Please enter the authentication secret name for {target_type} {str(target)}. Press Enter if no authentication is required.",
                 default="",
             )

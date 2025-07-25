@@ -5,7 +5,6 @@ AWS EC2 core operations and helper functions.
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import boto3
-import typer
 from botocore.exceptions import ClientError
 from rich.console import Console
 from rich.panel import Panel
@@ -37,7 +36,7 @@ from launch_wizard.utils.display_utils import (
     print_table_with_single_column,
     style_var,
 )
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 from launch_wizard.utils.user_data_utils import render_user_data
 
 
@@ -70,7 +69,7 @@ def validate_ami(ec2_client: boto3.client, ami_id: Optional[str]) -> str:
 
     # If no AMI is specified, prompt for input
     if not ami_id:
-        ami_id = typer.prompt("Please enter an AMI ID")
+        ami_id = prompt_with_trim("Please enter an AMI ID")
         ami_id = cast(str, ami_id)
 
     ami_name = get_ami_name(ec2_client, ami_id)
@@ -109,7 +108,7 @@ def validate_subnet(ec2_client: boto3.client, subnet_id: Optional[str]) -> Tuple
     if not subnet_id:
         print_table_with_multiple_columns("Available Outpost subnets", available_subnets_for_outposts)
 
-        subnet_id = typer.prompt("Please enter a subnet ID")
+        subnet_id = prompt_with_trim("Please enter a subnet ID")
         subnet_id = cast(str, subnet_id)
 
     selected_subnet = find_first_by_property(items=available_subnets_for_outposts, key="subnet_id", value=subnet_id)
@@ -201,7 +200,7 @@ def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) ->
 
         print_table_with_single_column("Available key pairs", available_key_pair_names, column_name="Key Pair Name")
 
-        key_pair_name = typer.prompt("Please enter a key pair name")
+        key_pair_name = prompt_with_trim("Please enter a key pair name")
         key_pair_name = cast(str, key_pair_name)
 
     if key_pair_name not in available_key_pair_names:
@@ -242,7 +241,7 @@ def validate_security_group(ec2_client: boto3.client, security_group_id: Optiona
             "Available security groups", available_security_group_ids, column_name="Security Group ID"
         )
 
-        security_group_id = typer.prompt("Please enter a security group ID")
+        security_group_id = prompt_with_trim("Please enter a security group ID")
         security_group_id = cast(str, security_group_id)
 
     if security_group_id not in available_security_group_ids:
@@ -285,7 +284,7 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
             "Available instance profiles", available_instance_profile_names, column_name="Instance Profile Name"
         )
 
-        instance_profile_name = typer.prompt("Please enter an instance profile name")
+        instance_profile_name = prompt_with_trim("Please enter an instance profile name")
         instance_profile_name = cast(str, instance_profile_name)
 
     if instance_profile_name not in available_instance_profile_names:
@@ -316,7 +315,7 @@ def validate_instance_name(instance_name: Optional[str]) -> Optional[str]:
         if auto_confirm("No instance name specified. Would you like to proceed without naming the instance?"):
             return None
 
-        instance_name = typer.prompt("Please enter an instance name")
+        instance_name = prompt_with_trim("Please enter an instance name")
         instance_name = cast(str, instance_name)
 
     return instance_name
@@ -385,7 +384,7 @@ def validate_root_volume_options(
         if not auto_confirm(size_prompt):
             while True:
                 try:
-                    size_input = typer.prompt(
+                    size_input = prompt_with_trim(
                         f"Please enter the root volume size (minimum {default_volume_size} GiB)",
                         default=default_volume_size,
                     )
@@ -423,7 +422,9 @@ def validate_root_volume_options(
 
             while True:
                 try:
-                    volume_type_input = typer.prompt("Please enter the root volume type", default=default_volume_type)
+                    volume_type_input = prompt_with_trim(
+                        "Please enter the root volume type", default=default_volume_type
+                    )
                     root_volume_type = EBSVolumeType(volume_type_input)
                     break
                 except ValueError:

@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional
 
-import typer
 from pypureclient import flasharray
 from pypureclient.exceptions import PureError
 from pypureclient.responses import ErrorResponse
@@ -12,7 +11,7 @@ from launch_wizard.common.error_codes import ERR_ENDPOINT_NOT_FOUND, ERR_INPUT_I
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import parse_ip_and_port, validate_ip_list
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 
 
 def pure_create_nvme_host(pure_client: flasharray.Client, host_name: str, host_nqn: str) -> None:
@@ -135,7 +134,7 @@ def pure_get_nvme_subsystem_endpoints_and_nqns(
             subsystem_endpoints = []
             Console().print("Please enter subsystem endpoints one by one. Press Enter on an empty line when finished.")
             while True:
-                subsystem_endpoint = typer.prompt(
+                subsystem_endpoint = prompt_with_trim(
                     "NVMe subsystem endpoint (IP address)",
                     default="",
                 )

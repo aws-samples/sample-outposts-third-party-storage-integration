@@ -5,7 +5,6 @@ AWS Outposts operations and helper functions.
 from typing import List, Optional, cast
 
 import boto3
-import typer
 from botocore.exceptions import ClientError
 from rich.console import Console
 
@@ -17,7 +16,7 @@ from launch_wizard.common.error_codes import (
     ERR_AWS_UNSUPPORTED_HARDWARE_TYPE,
 )
 from launch_wizard.utils.display_utils import print_table_with_single_column, style_var
-from launch_wizard.utils.ui_utils import error_and_exit
+from launch_wizard.utils.ui_utils import error_and_exit, prompt_with_trim
 
 
 def validate_instance_type(
@@ -51,7 +50,7 @@ def validate_instance_type(
             "Available instance types for this Outpost", available_instance_types, column_name="Instance Type"
         )
 
-        instance_type = typer.prompt("Please enter an instance type")
+        instance_type = prompt_with_trim("Please enter an instance type")
         instance_type = cast(str, instance_type)
 
     if instance_type not in available_instance_types:

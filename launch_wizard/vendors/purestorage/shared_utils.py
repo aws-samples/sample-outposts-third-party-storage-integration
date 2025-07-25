@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import typer
 from pypureclient import flasharray
 from pypureclient.exceptions import PureError
 from pypureclient.responses import ErrorResponse
@@ -11,7 +10,7 @@ from rich.rule import Rule
 from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_PURE_API, ERR_USER_ABORT, ERR_VOLUME_NOT_FOUND
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 
 
 def pure_get_volume_uuids(pure_client: flasharray.Client, volume_names: Optional[List[str]]) -> List[str]:
@@ -52,7 +51,7 @@ def pure_get_volume_uuids(pure_client: flasharray.Client, volume_names: Optional
         print_table_with_multiple_columns("Available volumes", available_volumes)
         Console().print("Enter volume names one by one. Press Enter on an empty line when finished.")
         while True:
-            volume_name = typer.prompt("Volume name", default="")
+            volume_name = prompt_with_trim("Volume name", default="")
             if volume_name == "":
                 break
             volume_names.append(volume_name)
@@ -128,7 +127,7 @@ def pure_get_host_group_name(pure_client: flasharray.Client, host_group_name: Op
 
         print_table_with_multiple_columns("Available host groups", available_host_groups)
 
-        host_group_name = typer.prompt("Please enter an existing host group name or specify a new name")
+        host_group_name = prompt_with_trim("Please enter an existing host group name or specify a new name")
 
         if host_group_name:
             Console().print(f"Using host group name: {style_var(host_group_name)}.")
@@ -181,7 +180,7 @@ def pure_get_host_name(pure_client: flasharray.Client, host_name: Optional[str])
 
         print_table_with_multiple_columns("Available hosts", available_hosts)
 
-        host_name = typer.prompt("Please enter an existing host name or specify a new name")
+        host_name = prompt_with_trim("Please enter an existing host name or specify a new name")
 
         if host_name:
             Console().print(f"Using host name: {style_var(host_name)}.")

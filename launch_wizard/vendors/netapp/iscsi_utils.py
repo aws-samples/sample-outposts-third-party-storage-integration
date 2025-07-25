@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional, Tuple, cast
 
-import typer
 from netapp_ontap.error import NetAppRestError
 from netapp_ontap.resource import Resource
 from netapp_ontap.resources import Igroup, IgroupInitiator, IpInterface, IscsiService, Lun, LunMap, Svm
@@ -30,7 +29,7 @@ from launch_wizard.utils.display_utils import (
     style_var,
 )
 from launch_wizard.utils.network_utils import validate_ip_list
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 
 
 def netapp_get_iscsi_service(svm_name: str) -> Optional[Resource]:
@@ -104,7 +103,7 @@ def netapp_get_svm_name_and_target_iqn(svm_name: Optional[str]) -> Tuple[str, st
 
     if not svm_name:
         print_table_with_multiple_columns("Available Storage Virtual Machines with iSCSI enabled", available_svms)
-        svm_name = typer.prompt("Please enter a Storage Virtual Machine (SVM) name")
+        svm_name = prompt_with_trim("Please enter a Storage Virtual Machine (SVM) name")
 
     selected_svm = find_first_by_property(items=available_svms, key="name", value=svm_name)
 
@@ -170,7 +169,7 @@ def netapp_create_igroup(svm_name: str, igroup_name: Optional[str], os_type: Ope
         print_table_with_multiple_columns(
             "Available initiator groups with iSCSI protocol on Storage Virtual Machine", available_igroups
         )
-        igroup_name = typer.prompt("Please enter an existing initiator group name or specify a new name")
+        igroup_name = prompt_with_trim("Please enter an existing initiator group name or specify a new name")
         igroup_name = cast(str, igroup_name)
 
     selected_igroup = find_first_by_property(items=available_igroups, key="name", value=igroup_name)
@@ -298,7 +297,7 @@ def netapp_map_luns_to_igroup(svm_name: str, igroup_name: str, lun_paths: Option
         lun_paths = []
         Console().print("Enter LUN paths one by one. Press Enter on an empty line when finished.")
         while True:
-            lun_path = typer.prompt("LUN path to map to initiator group", default="")
+            lun_path = prompt_with_trim("LUN path to map to initiator group", default="")
             if lun_path == "":
                 break
             lun_paths.append(lun_path)
@@ -419,7 +418,7 @@ def netapp_get_target_endpoints(svm_name: str, target_endpoints: Optional[List[s
             target_endpoints = []
             Console().print("Enter target endpoints one by one. Press Enter on an empty line when finished.")
             while True:
-                target_endpoint = typer.prompt(
+                target_endpoint = prompt_with_trim(
                     "Target endpoint IP address",
                     default="",
                 )

@@ -11,7 +11,7 @@ from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_USER_ABORT
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip_and_port_list
 from launch_wizard.utils.san_utils import generate_or_input_host_nqn
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 from launch_wizard.utils.validation_utils import (
     assign_auth_secret_names_to_targets,
     get_storage_target_limit,
@@ -89,12 +89,12 @@ def nvme(
         Console().print("Enter subsystem information one by one. Press Enter on an empty Subsystem NQN when finished.")
         while allowed_storage_target_limit is None or len(subsystem_nqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
-            subsystem_nqn = typer.prompt("Subsystem NQN", default="")
+            subsystem_nqn = prompt_with_trim("Subsystem NQN", default="")
             if subsystem_nqn == "" and len(subsystem_nqns) > 0:
                 break
             subsystem_nqns.append(subsystem_nqn)
 
-            subsystem_endpoint = typer.prompt("Subsystem endpoint (IP or IP:PORT)", default="")
+            subsystem_endpoint = prompt_with_trim("Subsystem endpoint (IP or IP:PORT)", default="")
             subsystem_endpoints.append(subsystem_endpoint)
         validate_ip_and_port_list(subsystem_endpoints)
     elif len(subsystem_nqns) != len(subsystem_endpoints):

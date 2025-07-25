@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional
 
-import typer
 from netapp_ontap.error import NetAppRestError
 from netapp_ontap.resources import NvmeInterface, NvmeSubsystem, NvmeSubsystemHost
 from rich.console import Console
@@ -17,7 +16,7 @@ from launch_wizard.common.error_codes import (
 from launch_wizard.utils.data_utils import find_first_by_property
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip_list
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 
 
 def netapp_get_nvme_subsystems(nvme_subsystem_names: Optional[List[str]]) -> List[Dict[str, str]]:
@@ -66,7 +65,7 @@ def netapp_get_nvme_subsystems(nvme_subsystem_names: Optional[List[str]]) -> Lis
         print_table_with_multiple_columns("Available NVMe subsystems", available_nvme_subsystems)
         Console().print("Enter subsystem names one by one. Press Enter on an empty line when finished.")
         while True:
-            nvme_subsystem_name = typer.prompt("Subsystem name", default="")
+            nvme_subsystem_name = prompt_with_trim("Subsystem name", default="")
             if nvme_subsystem_name == "":
                 break
             nvme_subsystem_names.append(nvme_subsystem_name)
@@ -170,7 +169,7 @@ def netapp_get_nvme_interfaces(subsystem_endpoints: Optional[List[str]]) -> List
             subsystem_endpoints = []
             Console().print("Enter subsystem endpoints one by one. Press Enter on an empty line when finished.")
             while True:
-                subsystem_endpoint = typer.prompt(
+                subsystem_endpoint = prompt_with_trim(
                     "Subsystem endpoint IP address",
                     default="",
                 )

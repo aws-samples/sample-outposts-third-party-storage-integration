@@ -11,7 +11,7 @@ from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_USER_ABORT
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip_and_port_list
 from launch_wizard.utils.san_utils import generate_discovery_portals, generate_or_input_initiator_iqn
-from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
 from launch_wizard.utils.validation_utils import (
     assign_auth_secret_names_to_targets,
     assign_lun_to_targets,
@@ -98,12 +98,12 @@ def iscsi(
         Console().print("Enter target information one by one. Press Enter on an empty Target IQN when finished.")
         while allowed_storage_target_limit is None or len(target_iqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
-            target_iqn = typer.prompt("Target IQN", default="")
+            target_iqn = prompt_with_trim("Target IQN", default="")
             if target_iqn == "" and len(target_iqns) > 0:
                 break
             target_iqns.append(target_iqn)
 
-            target_endpoint = typer.prompt("Target endpoint (IP or IP:PORT)", default="")
+            target_endpoint = prompt_with_trim("Target endpoint (IP or IP:PORT)", default="")
             target_endpoints.append(target_endpoint)
         validate_ip_and_port_list(target_endpoints)
     elif len(target_iqns) != len(target_endpoints):
