@@ -250,8 +250,6 @@ class AWSClient:
             response = self.ec2.import_image(**import_params)
             task_id = response["ImportTaskId"]
             log_message(LogLevel.SUCCESS, f"Import task started: {task_id}")
-
-            log_message(LogLevel.INFO, "Waiting for import task to complete...")
             ami_id = self.waiter.wait_for_import(task_id, IMPORT_TIMEOUT_MINUTES)
             return ami_id
         except Exception as e:
@@ -320,8 +318,6 @@ class AWSClient:
 
             task_id = response["ExportImageTaskId"]
             log_message(LogLevel.SUCCESS, f"Export task started: {task_id}")
-
-            log_message(LogLevel.INFO, "Waiting for export task to complete...")
             export_url = self.waiter.wait_for_export(task_id, EXPORT_TIMEOUT_MINUTES)
             return export_url
         except Exception as e:
@@ -428,7 +424,7 @@ class AWSClient:
                 code=ERR_AWS_SSM_SCRIPT_LOAD_FAILED,
             )
 
-    def execute_ssm_command(self, instance_id: str, commands: List[str], timeout_seconds: int = 1800) -> bool:
+    def execute_ssm_command(self, instance_id: str, commands: List[str], timeout_seconds: int = 1800) -> None:
         """Execute SSM commands on instance.
 
         Args:
@@ -451,7 +447,9 @@ class AWSClient:
             command_id = response["Command"]["CommandId"]
             log_message(LogLevel.INFO, f"SSM command sent: {command_id}")
 
-            return self.waiter.wait_for_ssm_command(command_id, instance_id)
+            self.waiter.wait_for_ssm_command(command_id, instance_id)
+            log_message(LogLevel.SUCCESS, f"SSM command completed successfully: {command_id}")
+
         except Exception as e:
             error_and_exit(
                 "Failed to execute SSM command",
@@ -514,9 +512,9 @@ class AWSClient:
                     snapshots[device_name] = snapshot_response["SnapshotId"]
 
             # Wait for all snapshots to complete
-            log_message(LogLevel.INFO, "Waiting for snapshots to complete...")
             for snapshot_id in snapshots.values():
                 self.waiter.wait_for_snapshot_completed(snapshot_id)
+                log_message(LogLevel.SUCCESS, f"Snapshot completed: {snapshot_id}")
 
             # Get original AMI details
             log_message(LogLevel.INFO, "Getting original AMI details...")
@@ -567,8 +565,8 @@ class AWSClient:
             log_message(LogLevel.INFO, f"New AMI created: {new_ami_id}")
 
             # Wait for AMI to be available
-            log_message(LogLevel.INFO, "Waiting for AMI to be available...")
             self.waiter.wait_for_ami_available(new_ami_id)
+            log_message(LogLevel.SUCCESS, f"New AMI is now available: {new_ami_id}")
 
             # Tag the new AMI
             self.ec2.create_tags(
@@ -582,7 +580,6 @@ class AWSClient:
                 ],
             )
 
-            log_message(LogLevel.SUCCESS, f"New AMI created successfully: {new_ami_id}")
             return new_ami_id
 
         except Exception as e:

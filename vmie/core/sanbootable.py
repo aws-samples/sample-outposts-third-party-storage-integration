@@ -8,10 +8,8 @@ from rich.rule import Rule
 from vmie.common import (
     ERR_SANBOOTABLE_AMI_CREATE_FAILED,
     ERR_SANBOOTABLE_INSTALL_FAILED,
-    ERR_SANBOOTABLE_SCRIPT_FAILED,
     ERR_SANBOOTABLE_SCRIPT_INSTALL_FAILED,
     ERR_SANBOOTABLE_SCRIPT_NOT_FOUND,
-    ERR_SANBOOTABLE_SSM_AGENT_FAILED,
     ERR_SANBOOTABLE_WINDOWS_NOT_SUPPORTED,
     LogLevel,
 )
@@ -55,16 +53,11 @@ class SanbootableInstaller:
 
             # Wait for SSM agent
             log_step(4, 5, "Waiting for SSM agent to be online")
-            if not self.aws_client.waiter.wait_for_ssm_agent(instance_id):
-                error_and_exit(
-                    "SSM agent failed to come online within the timeout period",
-                    "Please check instance connectivity and SSM agent installation",
-                    code=ERR_SANBOOTABLE_SSM_AGENT_FAILED,
-                )
-            log_message(LogLevel.SUCCESS, "SSM agent online")
+            self.aws_client.waiter.wait_for_ssm_agent(instance_id)
+            log_message(LogLevel.SUCCESS, f"SSM agent online for instance: {instance_id}")
 
             # Install sanbootable using auto-detection script
-            log_step(5, 5, "Installing sanbootable with auto-detection")
+            log_step(5, 5, "Installing sanbootable")
             self._install_sanbootable_with_script(instance_id)
 
             # Create new AMI
@@ -109,15 +102,7 @@ class SanbootableInstaller:
                         commands.append(stripped_line)
 
             # Execute the installation script via SSM
-            success = self.aws_client.execute_ssm_command(instance_id, commands, timeout_seconds=1800)  # 30 minutes
-
-            if not success:
-                error_and_exit(
-                    "Sanbootable installation script failed",
-                    "Please check the instance logs for more details",
-                    code=ERR_SANBOOTABLE_SCRIPT_FAILED,
-                )
-
+            self.aws_client.execute_ssm_command(instance_id, commands, timeout_seconds=1800)  # 30 minutes
             log_message(LogLevel.SUCCESS, "Sanbootable installation completed successfully")
 
         except Exception as e:

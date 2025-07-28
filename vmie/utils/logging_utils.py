@@ -223,7 +223,6 @@ def wait_with_progress(description: str, check_function, timeout_seconds: int = 
             progress_desc = result.get("description", description)
 
             if completed:
-                logger.info(f"[bright_green]✓[/bright_green] Completed: {progress_desc}")
                 return True
 
             # Update progress display with percentage and description

@@ -78,13 +78,11 @@ class AWSWaiter:
                 if status == "completed":
                     if operation_type == "import":
                         result = task[result_key]
-                        log_message(LogLevel.SUCCESS, f"Import completed: {result}")
                     else:  # export
                         s3_location = task[result_key]
                         bucket = s3_location["S3Bucket"]
                         prefix = s3_location["S3Prefix"]
                         result = f"s3://{bucket}/{prefix}{task_id}.raw"
-                        log_message(LogLevel.SUCCESS, f"Export completed: {result}")
                     return {
                         "completed": True,
                         "progress": 100,
@@ -146,7 +144,7 @@ class AWSWaiter:
         """Wait for export task to complete and return S3 location."""
         return self._wait_for_task(task_id, "export", timeout_minutes)
 
-    def wait_for_instance_running(self, instance_id: str, timeout_minutes: int = 10) -> bool:
+    def wait_for_instance_running(self, instance_id: str, timeout_minutes: int = 10) -> None:
         """Wait for instance to be in running state."""
         description = f"Waiting for instance {instance_id} to be running"
         time.sleep(1)
@@ -158,7 +156,6 @@ class AWSWaiter:
                 state = instance["State"]["Name"]
 
                 if state == "running":
-                    log_message(LogLevel.SUCCESS, f"Instance running: {instance_id}")
                     return {"completed": True, "description": f"Instance {instance_id} is running"}
                 elif state in ["terminated", "stopping", "stopped"]:
                     error_and_exit(
@@ -189,9 +186,7 @@ class AWSWaiter:
                 code=ERR_AWS_INSTANCE_TIMEOUT,
             )
 
-        return True
-
-    def wait_for_ssm_agent(self, instance_id: str, timeout_minutes: int = 10) -> bool:
+    def wait_for_ssm_agent(self, instance_id: str, timeout_minutes: int = 10) -> None:
         """Wait for SSM agent to be online."""
         description = f"Waiting for SSM agent on instance {instance_id}"
 
@@ -202,7 +197,6 @@ class AWSWaiter:
                 )
 
                 if response["InstanceInformationList"]:
-                    log_message(LogLevel.SUCCESS, f"SSM agent online for instance: {instance_id}")
                     return {
                         "completed": True,
                         "description": f"SSM agent online for instance {instance_id}",
@@ -227,12 +221,13 @@ class AWSWaiter:
         )
 
         if not success:
-            log_message(LogLevel.WARN, f"SSM agent did not come online within {timeout_minutes} minutes")
-            return False
+            error_and_exit(
+                "SSM agent failed to come online within the timeout period",
+                "Please check instance connectivity and SSM agent installation",
+                code=ERR_AWS_SSM_TIMEOUT,
+            )
 
-        return True
-
-    def wait_for_ssm_command(self, command_id: str, instance_id: str, timeout_minutes: int = 10) -> bool:
+    def wait_for_ssm_command(self, command_id: str, instance_id: str, timeout_minutes: int = 10) -> None:
         """
         Wait for an SSM command to finish executing.
 
@@ -240,9 +235,6 @@ class AWSWaiter:
             command_id: The SSM command ID to wait for
             instance_id: The instance ID where the command is running
             timeout_minutes: Maximum time to wait in minutes
-
-        Returns:
-            bool: True if the command completed successfully
         """
         description = f"Waiting for SSM command {command_id} to complete on instance {instance_id}"
 
@@ -253,7 +245,6 @@ class AWSWaiter:
                 status = response["Status"]
 
                 if status == "Success":
-                    log_message(LogLevel.SUCCESS, f"SSM command completed successfully: {command_id}")
                     return {
                         "completed": True,
                         "description": f"SSM command {command_id} completed successfully",
@@ -294,9 +285,7 @@ class AWSWaiter:
                 code=ERR_AWS_SSM_TIMEOUT,
             )
 
-        return True
-
-    def wait_for_ami_available(self, ami_id: str, timeout_minutes: int = 30) -> bool:
+    def wait_for_ami_available(self, ami_id: str, timeout_minutes: int = 30) -> None:
         """Wait for AMI to be available."""
         description = f"Waiting for AMI {ami_id} to be available"
 
@@ -314,7 +303,6 @@ class AWSWaiter:
                 state = image["State"]
 
                 if state == "available":
-                    log_message(LogLevel.SUCCESS, f"AMI available: {ami_id}")
                     return {"completed": True, "description": f"AMI {ami_id} is available"}
                 elif state in ["failed", "deregistered"]:
                     error_and_exit(
@@ -348,9 +336,7 @@ class AWSWaiter:
                 code=ERR_AWS_AMI_TIMEOUT,
             )
 
-        return True
-
-    def wait_for_snapshot_completed(self, snapshot_id: str, timeout_minutes: int = 30) -> bool:
+    def wait_for_snapshot_completed(self, snapshot_id: str, timeout_minutes: int = 30) -> None:
         """Wait for snapshot to be completed."""
         description = f"Waiting for snapshot {snapshot_id} to complete"
 
@@ -368,7 +354,6 @@ class AWSWaiter:
                 state = snapshot["State"]
 
                 if state == "completed":
-                    log_message(LogLevel.SUCCESS, f"Snapshot completed: {snapshot_id}")
                     return {"completed": True, "description": f"Snapshot {snapshot_id} completed"}
                 elif state == "error":
                     error_and_exit(
@@ -402,9 +387,7 @@ class AWSWaiter:
                 code=ERR_AWS_SNAPSHOT_TIMEOUT,
             )
 
-        return True
-
-    def _wait_for_propagation(self, resource_type: str, resource_name: str, wait_seconds: int = 20) -> bool:
+    def _wait_for_propagation(self, resource_type: str, resource_name: str, wait_seconds: int = 20) -> None:
         """
         Generic wait function for AWS resource propagation.
 
@@ -412,9 +395,6 @@ class AWSWaiter:
             resource_type: Type of resource (e.g., "instance profile", "role")
             resource_name: Name of the resource
             wait_seconds: Number of seconds to wait
-
-        Returns:
-            bool: True (assumes the resource is ready after the wait period)
         """
         description = f"Waiting for {resource_type} {resource_name} to be available"
         start_time = time.time()
@@ -422,7 +402,6 @@ class AWSWaiter:
         def check_ready() -> Dict:
             elapsed = time.time() - start_time
             if elapsed >= wait_seconds:
-                log_message(LogLevel.SUCCESS, f"{resource_type.capitalize()} should now be available: {resource_name}")
                 return {
                     "completed": True,
                     "progress": 100,
@@ -434,35 +413,27 @@ class AWSWaiter:
 
             return {"completed": False, "progress": progress_value, "description": progress_desc}
 
-        success = wait_with_progress(
+        wait_with_progress(
             description=description,
             check_function=check_ready,
             timeout_seconds=wait_seconds + 5,  # Slightly longer timeout to ensure completion
             check_interval=2,
         )
 
-        return success
-
-    def wait_for_instance_profile(self, profile_name: str) -> bool:
+    def wait_for_instance_profile(self, profile_name: str) -> None:
         """
         Wait for an instance profile to be created and available.
 
         Args:
             profile_name: Name of the instance profile to wait for
-
-        Returns:
-            bool: True (assumes the instance profile is available after 20 seconds)
         """
-        return self._wait_for_propagation("instance profile", profile_name, 20)
+        self._wait_for_propagation("instance profile", profile_name, 20)
 
-    def wait_for_role_update(self, role_name: str) -> bool:
+    def wait_for_role_update(self, role_name: str) -> None:
         """
         Wait for a role to be updated.
 
         Args:
             role_name: Name of the role to wait for
-
-        Returns:
-            bool: True (assumes the role is updated after 20 seconds)
         """
-        return self._wait_for_propagation("role", role_name, 20)
+        self._wait_for_propagation("role", role_name, 20)
