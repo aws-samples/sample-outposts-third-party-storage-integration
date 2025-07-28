@@ -40,9 +40,11 @@ from .validation_utils import (
     validate_ami_id,
     validate_image_source,
     validate_json_file,
+    validate_license_type,
     validate_local_file,
     validate_s3_url,
     validate_url,
+    validate_usage_operation,
 )
 
 __all__ = [
@@ -74,5 +76,7 @@ __all__ = [
     "validate_s3_url",
     "validate_local_file",
     "validate_json_file",
+    "validate_license_type",
+    "validate_usage_operation",
     "load_disk_containers_from_json",
 ]

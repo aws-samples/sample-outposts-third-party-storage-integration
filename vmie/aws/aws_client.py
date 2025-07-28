@@ -3,7 +3,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -220,16 +220,34 @@ class AWSClient:
                 code=ERR_AWS_VMIMPORT_ROLE_SETUP_FAILED,
             )
 
-    def _execute_import_task(self, disk_containers: List[Dict], description: str) -> str:
+    def _execute_import_task(
+        self,
+        disk_containers: List[Dict],
+        description: str,
+        license_type: Optional[str] = None,
+        usage_operation: Optional[str] = None,
+    ) -> str:
         """
         Private helper method to execute image import task.
 
         :param disk_containers: List of disk container configurations
         :param description: Description of the import task
+        :param license_type: License type to be used for the AMI (AWS or BYOL)
+        :param usage_operation: Usage operation value for the AMI
         :return: AMI ID
         """
         try:
-            response = self.ec2.import_image(Description=description, DiskContainers=disk_containers)
+            # Build the import parameters
+            import_params = {"Description": description, "DiskContainers": disk_containers}
+
+            # Add optional parameters if provided
+            if license_type:
+                import_params["LicenseType"] = license_type
+
+            if usage_operation:
+                import_params["UsageOperation"] = usage_operation
+
+            response = self.ec2.import_image(**import_params)
             task_id = response["ImportTaskId"]
             log_message(LogLevel.SUCCESS, f"Import task started: {task_id}")
 
@@ -244,13 +262,22 @@ class AWSClient:
                 code=ERR_AWS_IMPORT_TASK_FAILED,
             )
 
-    def import_image(self, s3_url: str, description: str, format_type: str) -> str:
+    def import_image(
+        self,
+        s3_url: str,
+        description: str,
+        format_type: str,
+        license_type: Optional[str] = None,
+        usage_operation: Optional[str] = None,
+    ) -> str:
         """
         Import VM image from S3 and return AMI ID.
 
         :param s3_url: S3 URL of the image to import
         :param description: Description of the import task
         :param format_type: Format type of the image
+        :param license_type: License type to be used for the AMI (AWS or BYOL)
+        :param usage_operation: Usage operation value for the AMI
         :return: AMI ID
         """
         bucket, key = s3_url.replace("s3://", "").split("/", 1)
@@ -261,17 +288,25 @@ class AWSClient:
                 "UserBucket": {"S3Bucket": bucket, "S3Key": key},
             }
         ]
-        return self._execute_import_task(disk_containers, description)
+        return self._execute_import_task(disk_containers, description, license_type, usage_operation)
 
-    def import_image_from_disk_containers(self, disk_containers: List[Dict], description: str) -> str:
+    def import_image_from_disk_containers(
+        self,
+        disk_containers: List[Dict],
+        description: str,
+        license_type: Optional[str] = None,
+        usage_operation: Optional[str] = None,
+    ) -> str:
         """
         Import VM image from disk containers and return AMI ID.
 
         :param disk_containers: List of disk container configurations
         :param description: Description of the import task
+        :param license_type: License type to be used for the AMI (AWS or BYOL)
+        :param usage_operation: Usage operation value for the AMI
         :return: AMI ID
         """
-        return self._execute_import_task(disk_containers, description)
+        return self._execute_import_task(disk_containers, description, license_type, usage_operation)
 
     def export_image(self, ami_id: str, s3_bucket: str, s3_prefix: str, description: str) -> str:
         """Export AMI to S3 and return task ID."""

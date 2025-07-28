@@ -174,3 +174,52 @@ def validate_json_file(json_path: str) -> str:
         raise ValidationError(f"Invalid JSON file: Failed to read file: {e}") from e
 
     return json_path
+
+
+def validate_license_type(license_type: Optional[str]) -> Optional[str]:
+    """
+    Validate license type parameter.
+
+    Args:
+        license_type: The license type to validate
+
+    Returns:
+        Optional[str]: The validated license type
+
+    Raises:
+        ValidationError: If the license type is invalid
+    """
+    if license_type is None:
+        return None
+
+    valid_license_types = ["AWS", "BYOL"]
+    if license_type not in valid_license_types:
+        raise ValidationError(
+            f"Invalid license type: {license_type}. " f"Valid values are: {', '.join(valid_license_types)}"
+        )
+
+    return license_type
+
+
+def validate_usage_operation(usage_operation: Optional[str]) -> Optional[str]:
+    """
+    Validate usage operation parameter.
+
+    Args:
+        usage_operation: The usage operation to validate
+
+    Returns:
+        Optional[str]: The validated usage operation
+
+    Raises:
+        ValidationError: If the usage operation is invalid
+    """
+    if usage_operation is None:
+        return None
+
+    if not usage_operation.startswith("RunInstances"):
+        raise ValidationError(
+            f"Invalid usage operation: {usage_operation}. " "Usage operation must start with 'RunInstances'"
+        )
+
+    return usage_operation

@@ -124,6 +124,8 @@ Specialized utility modules organized by functionality:
 
 - **Export Prefix**: The `--s3-export-prefix` option allows you to specify a custom S3 prefix for the exported image. If not specified, a default prefix with a timestamp will be used (e.g., `exports/vmie-export-20250718-220000/`). The prefix should end with a forward slash (`/`), but the tool will add one if it's missing.
 
+- **License Type and Usage Operation**: The `--license-type` and `--usage-operation` parameters are mutually exclusive. You can specify only one of these options per import operation, as documented in the [AWS VM Import/Export licensing documentation](https://docs.aws.amazon.com/vm-import/latest/userguide/licensing-specify-option.html).
+
 ### Command Line Interface
 
 The tool provides three main subcommands for different workflows:
@@ -160,9 +162,11 @@ python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source https:/
 | `--instance-profile`    |        | IAM instance profile name                                 | No              | VMIEInstanceProfile |
 
 #### Import-Specific Options
-| Option          | Short | Description                                                                                                                                                                                                                                                                                         | Required  |
-|-----------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| `--source`      | `-s`  | VM image source: URL (http/https), S3 URL (s3://), local file path, or JSON file with disk containers. **Note**: S3 URLs must reference objects in the same bucket specified by the `--s3-bucket` argument. For JSON files, all referenced disk images must be pre-uploaded to the specified bucket | Yes       |
+| Option             | Short | Description                                                                                                                                                                                                                                                                                         | Required  |
+|--------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `--source`         | `-s`  | VM image source: URL (http/https), S3 URL (s3://), local file path, or JSON file with disk containers. **Note**: S3 URLs must reference objects in the same bucket specified by the `--s3-bucket` argument. For JSON files, all referenced disk images must be pre-uploaded to the specified bucket | Yes       |
+| `--license-type`   |       | License type to be used for the AMI (AWS or BYOL)                                                                                                                                                                                                                                                  | No        |
+| `--usage-operation`|       | Usage operation value for the AMI                                                                                                                                                                                                                                                                  | No        |
 
 #### Export-Specific Options
 | Option               | Short  | Description                                              | Required |
@@ -175,6 +179,8 @@ python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source https:/
 |----------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | `--source`           | `-s`   | VM image source: URL (http/https), S3 URL (s3://), local file path, or JSON file with disk containers. **Note**: S3 URLs must reference objects in the same bucket specified by the `--s3-bucket` argument. For JSON files, all referenced disk images must be pre-uploaded to the specified bucket | Yes      |
 | `--s3-export-prefix` |        | S3 prefix for exported image (e.g., 'exports/my-image/')                                                                                                                                                                                                                                            | No       |
+| `--license-type`     |        | License type to be used for the AMI (AWS or BYOL)                                                                                                                                                                                                                                                  | No       |
+| `--usage-operation`  |        | Usage operation value for the AMI                                                                                                                                                                                                                                                                  | No       |
 
 ### Examples
 
@@ -192,6 +198,12 @@ python -m vmie import --region us-west-2 --s3-bucket my-bucket --source /path/to
 
 # Import with sanbootable installation
 python -m vmie import --region us-west-2 --s3-bucket my-bucket --source https://example.com/image.ova --install-sanbootable
+
+# Import with BYOL license type
+python -m vmie import --region us-west-2 --s3-bucket my-bucket --source ./image.ova --license-type BYOL
+
+# Import with custom usage operation
+python -m vmie import --region us-west-2 --s3-bucket my-bucket --source ./image.ova --usage-operation RunInstances:0010
 
 # Import with custom instance profile
 python -m vmie import --region us-west-2 --s3-bucket my-bucket --source ./image.ova --instance-profile MyCustomProfile
@@ -225,8 +237,11 @@ python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source https:/
 # Full workflow with sanbootable installation from S3 (must be in the same bucket)
 python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source s3://my-bucket/image.vmdk --install-sanbootable
 
-# Convert from local file
-python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source ./image.ova --install-sanbootable
+# Convert from local file with BYOL license
+python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source ./image.ova --license-type BYOL
+
+# Convert with custom usage operation
+python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source ./image.ova --usage-operation RunInstances:0010
 
 # Convert with custom instance profile
 python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source /home/user/vm-images/image.ova --instance-profile MyProfile
@@ -234,8 +249,8 @@ python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source /home/u
 # Convert from JSON file with multiple disk containers
 python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source disk-containers.json
 
-# Convert with custom S3 export prefix
-python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source ./image.ova --s3-export-prefix exports/custom-prefix/
+# Convert with custom S3 export prefix and license type
+python -m vmie convert --region us-west-2 --s3-bucket my-bucket --source ./image.ova --s3-export-prefix exports/custom-prefix/ --license-type BYOL
 ```
 
 ### Help and Documentation

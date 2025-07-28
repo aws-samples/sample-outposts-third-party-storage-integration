@@ -45,6 +45,8 @@ class VMIECore:
         instance_profile: str = DEFAULT_INSTANCE_PROFILE,
         install_sanbootable: bool = False,
         export_prefix: Optional[str] = None,
+        license_type: Optional[str] = None,
+        usage_operation: Optional[str] = None,
     ):
         """Initialize VMIE core."""
         self.region = region
@@ -56,6 +58,8 @@ class VMIECore:
         self.instance_profile = instance_profile
         self.install_sanbootable = install_sanbootable
         self.export_prefix = export_prefix
+        self.license_type = license_type
+        self.usage_operation = usage_operation
 
         # Initialize components
         self.aws_client = AWSClient(region)
@@ -244,10 +248,14 @@ class VMIECore:
 
         if image_source_type == ImageSourceType.JSON:
             containers = load_disk_containers_from_json(image_source)
-            ami_id = self.aws_client.import_image_from_disk_containers(containers, description)
+            ami_id = self.aws_client.import_image_from_disk_containers(
+                containers, description, self.license_type, self.usage_operation
+            )
         else:
             image_format = detect_image_format(filename)
-            ami_id = self.aws_client.import_image(image_source, description, image_format.value)
+            ami_id = self.aws_client.import_image(
+                image_source, description, image_format.value, self.license_type, self.usage_operation
+            )
 
         log_message(
             LogLevel.SUCCESS,
