@@ -340,10 +340,10 @@ class AWSClient:
                 if e.response["Error"]["Code"] == "NoSuchEntity":
                     self.iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(EC2_TRUST_POLICY))
 
-                    # Attach AWS managed policy for SSM access
-                    self.iam.attach_role_policy(
-                        RoleName=role_name, PolicyArn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-                    )
+            # Attach AWS managed policy for SSM access
+            self.iam.attach_role_policy(
+                RoleName=role_name, PolicyArn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            )
 
             # Create instance profile
             try:
@@ -351,8 +351,15 @@ class AWSClient:
             except ClientError as e:
                 if e.response["Error"]["Code"] == "NoSuchEntity":
                     self.iam.create_instance_profile(InstanceProfileName=profile_name)
-                    self.iam.add_role_to_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
-                    self.waiter.wait_for_instance_profile(profile_name)
+
+            # Attach role to instance profile
+            try:
+                self.iam.add_role_to_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
+                self.waiter.wait_for_instance_profile(profile_name)
+            except ClientError as e:
+                # Role is already attached to the instance profile
+                if e.response["Error"]["Code"] == "LimitExceeded":
+                    pass
 
             log_message(LogLevel.SUCCESS, f"Instance profile ready: {profile_name}")
             return profile_name
