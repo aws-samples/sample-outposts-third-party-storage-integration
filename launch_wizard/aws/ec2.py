@@ -845,6 +845,7 @@ def launch_instance_helper_nvme(
     root_volume_type: Optional[EBSVolumeType],
     host_nqn: str,
     subsystems: List[Dict[str, str]],
+    guest_os_scripts: Optional[List[Dict[str, str]]],
 ) -> None:
     """
     Launch an EC2 instance configured for NVMe storage connectivity.
@@ -872,6 +873,7 @@ def launch_instance_helper_nvme(
         root_volume_type: The root volume type (optional).
         host_nqn: The NVMe host qualified name for the instance.
         subsystems: List of NVMe subsystem configurations.
+        guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
@@ -881,7 +883,7 @@ def launch_instance_helper_nvme(
     user_data_inputs: Dict[str, Any] = {
         "hostNQN": host_nqn,
         "subsystems": subsystems,
-        "guestOsScripts": [],  # Temporary
+        "guestOsScripts": guest_os_scripts,
     }
     if enable_dm_multipath:
         user_data_inputs["dmMultipath"] = True
@@ -930,6 +932,7 @@ def launch_instance_helper_iscsi(
     initiator_iqn: str,
     targets: List[Dict[str, str]],
     portals: List[Dict[str, str]],
+    guest_os_scripts: Optional[List[Dict[str, str]]],
 ) -> None:
     """
     Launch an EC2 instance configured for iSCSI storage connectivity.
@@ -957,6 +960,7 @@ def launch_instance_helper_iscsi(
         initiator_iqn: The iSCSI initiator qualified name for the instance.
         targets: List of iSCSI target configurations.
         portals: List of iSCSI portal configurations for discovery.
+        guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
@@ -967,7 +971,7 @@ def launch_instance_helper_iscsi(
         "initiatorIQN": initiator_iqn,
         "portals": portals,
         "targets": targets,
-        "guestOsScripts": [],  # Temporary
+        "guestOsScripts": guest_os_scripts,
         "isOutpostServer": outpost_hardware_type == OutpostHardwareType.SERVER,
         "lniIndex": 1,
     }

@@ -12,6 +12,7 @@ from launch_wizard.utils.display_utils import print_table_with_multiple_columns,
 from launch_wizard.utils.network_utils import validate_ip_and_port_list
 from launch_wizard.utils.san_utils import generate_or_input_host_nqn
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
+from launch_wizard.utils.user_data_utils import process_guest_os_scripts_input
 from launch_wizard.utils.validation_utils import (
     assign_auth_secret_names_to_targets,
     get_storage_target_limit,
@@ -46,6 +47,13 @@ def nvme(
     ] = None,
     enable_dm_multipath: Annotated[
         Optional[bool], typer.Option(help="Enable Device Mapper Multipath for redundant storage paths")
+    ] = None,
+    guest_os_script_paths: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            "--guest-os-script",
+            help="Path to additional guest OS script files to execute (only applicable for localboot and sanboot features)",
+        ),
     ] = None,
 ):
     """
@@ -127,9 +135,13 @@ def nvme(
 
     enable_dm_multipath = validate_enable_dm_multipath(enable_dm_multipath)
 
+    # Process guest OS scripts if provided (only applicable for localboot and sanboot)
+    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name)
+
     ctx.obj["host_nqn"] = host_nqn
     ctx.obj["subsystems"] = subsystems
     ctx.obj["enable_dm_multipath"] = enable_dm_multipath
+    ctx.obj["guest_os_scripts"] = guest_os_scripts
 
     launch_instance_helper_nvme(
         feature_name=ctx.obj["feature_name"],
@@ -149,4 +161,5 @@ def nvme(
         root_volume_type=ctx.obj["root_volume_type"],
         host_nqn=ctx.obj["host_nqn"],
         subsystems=ctx.obj["subsystems"],
+        guest_os_scripts=ctx.obj["guest_os_scripts"],
     )

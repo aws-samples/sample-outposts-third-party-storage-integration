@@ -13,6 +13,7 @@ from launch_wizard.utils.display_utils import print_table_with_multiple_columns,
 from launch_wizard.utils.network_utils import validate_ip, validate_ip_list
 from launch_wizard.utils.san_utils import generate_discovery_portals, generate_or_input_initiator_iqn
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
+from launch_wizard.utils.user_data_utils import process_guest_os_scripts_input
 from launch_wizard.utils.validation_utils import (
     assign_auth_secret_names_to_targets,
     assign_lun_to_targets,
@@ -73,6 +74,13 @@ def iscsi(
     ] = None,
     lun: Annotated[
         Optional[int], typer.Option(help="Logical Unit Number (LUN) for SAN boot and LocalBoot (0-255)")
+    ] = None,
+    guest_os_script_paths: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            "--guest-os-script",
+            help="Path to additional guest OS script files to execute (only applicable for localboot and sanboot features)",
+        ),
     ] = None,
 ) -> None:
     """
@@ -173,9 +181,13 @@ def iscsi(
     if not auto_confirm("Would you like to proceed with launching the instance?"):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
+    # Process guest OS scripts if provided (only applicable for localboot and sanboot)
+    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name)
+
     ctx.obj["initiator_iqn"] = initiator_iqn
     ctx.obj["targets"] = targets
     ctx.obj["portals"] = portals
+    ctx.obj["guest_os_scripts"] = guest_os_scripts
 
     launch_instance_helper_iscsi(
         feature_name=ctx.obj["feature_name"],
@@ -195,4 +207,5 @@ def iscsi(
         initiator_iqn=ctx.obj["initiator_iqn"],
         targets=ctx.obj["targets"],
         portals=ctx.obj["portals"],
+        guest_os_scripts=ctx.obj["guest_os_scripts"],
     )

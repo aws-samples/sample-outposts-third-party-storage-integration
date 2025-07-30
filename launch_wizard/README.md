@@ -182,6 +182,9 @@ python -m launch_wizard generic iscsi
 
 # Example with common options and vendor-specific options
 python -m launch_wizard --region us-west-2 --ami-id ami-12345 netapp nvme --netapp-management-ip 10.0.0.10
+
+# Example with guest OS scripts (for localboot/sanboot features only)
+python -m launch_wizard purestorage iscsi --guest-os-script /path/to/config.yml --guest-os-script /path/to/setup.sh
 ```
 
 ### Common Options
@@ -201,9 +204,74 @@ For a complete list of common options, you can use:
 python -m launch_wizard --help
 ```
 
+### Guest OS Scripts
+
+The Launch Wizard supports the inclusion of additional guest OS scripts for **LocalBoot** (`localboot`) and **SAN boot** (`sanboot`) features only. These scripts are executed during the instance initialization process and can be used to perform custom configuration tasks.
+
+#### Supported Script Types
+
+- **Shell Scripts** (`.sh`, `.bash` files or files starting with `#!/`): Executed as shell scripts
+- **Cloud-Config** (`.yml`, `.yaml` files or files starting with `#cloud-config`): Processed as cloud-init configuration
+
+#### Script Usage
+
+Guest OS scripts are specified as **vendor-specific options** using the `--guest-os-script` option with each vendor subcommand. You can specify one or more script files:
+
+```bash
+# Single script with NetApp NVMe
+python -m launch_wizard netapp nvme --guest-os-script /path/to/script.sh
+
+# Multiple scripts with Pure Storage iSCSI
+python -m launch_wizard purestorage iscsi --guest-os-script /path/to/config.yml --guest-os-script /path/to/setup.sh
+```
+
+#### Interactive Mode
+
+When using **LocalBoot** (`localboot`) and **SAN boot** (`sanboot`) features, if no guest OS scripts are specified via command-line options, the tool will interactively prompt you to:
+
+1. Proceed without guest OS scripts, or
+2. Provide script file paths interactively
+
+This interactive mode allows you to add multiple script files one at a time and validates that each file exists before proceeding.
+
+#### Important Notes
+
+- Guest OS scripts are **only supported** for `localboot` and `sanboot` features
+- Scripts specified for `data_volumes` feature will be ignored with a warning message
+- Scripts are executed in the order they are specified
+- Ensure scripts have appropriate permissions and are compatible with the target AMI's operating system
+
+#### Example Scripts
+
+**Shell Script Example** (`setup.sh`):
+
+```bash
+#!/bin/bash
+# Custom instance setup script
+echo "Configuring custom settings..."
+# Add your custom configuration here
+```
+
+**Cloud-Config Example** (`config.yml`):
+
+```yaml
+#cloud-config
+packages:
+    - htop
+    - vim
+runcmd:
+    - echo "Custom configuration complete" >> /var/log/custom-setup.log
+```
+
 ### Vendor-Specific Options
 
 In addition to the common options above, each vendor subcommand has its own set of options. These vendor-specific options are placed after the vendor and protocol subcommands (e.g., `netapp nvme --netapp-management-ip ...`). These are also interactive by default. The examples below show some of the commonly used options, but this is not a complete list:
+
+#### Common Vendor Options
+
+All vendor subcommands support the following option:
+
+- `--guest-os-script`: Path to additional guest OS script files to execute
 
 #### NetApp Options
 
@@ -238,6 +306,8 @@ Example of a fully automated command for NetApp NVMe:
 
 ```bash
 python -m launch_wizard \
+    --feature-name sanboot \
+    --guest-os-type linux \
     --region us-west-2 \
     --ami-id ami-0123456789abcdef0 \
     --subnet-id subnet-0123456789abcdef0 \
@@ -252,6 +322,8 @@ python -m launch_wizard \
     --netapp-management-ip 10.0.0.10 \
     --netapp-username admin \
     --netapp-password "SecurePassword123" \
+    --guest-os-script /path/to/config.yml \
+    --guest-os-script /path/to/setup.sh \
     # additional options ...
 ```
 
@@ -299,6 +371,7 @@ User data templates are located in the `user_data_templates` directory and are o
 - **Network Connectivity**: Verify network connectivity between your Outpost and storage arrays
 - **Storage Array Credentials**: Ensure storage array credentials are correct and accessible
 - **Instance Launch Failures**: Check security groups, subnet configurations, and IAM permissions
+- **Guest OS Script Issues**: Ensure script files exist, are readable, and have correct format (shell script or cloud-config)
 
 ### Logs and Debugging
 
