@@ -208,4 +208,6 @@ def iscsi(
         targets=ctx.obj["targets"],
         portals=ctx.obj["portals"],
         guest_os_scripts=ctx.obj["guest_os_scripts"],
+        save_user_data_path=ctx.obj["save_user_data_path"],
+        save_user_data_only=ctx.obj["save_user_data_only"],
     )

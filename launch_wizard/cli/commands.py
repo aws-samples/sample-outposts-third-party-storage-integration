@@ -7,6 +7,7 @@ from typing import Optional
 import boto3
 import typer
 from botocore.exceptions import ClientError
+from rich.console import Console
 from typing_extensions import Annotated
 
 from launch_wizard.aws.ec2 import (
@@ -24,7 +25,8 @@ from launch_wizard.common.config import global_config
 from launch_wizard.common.constants import AWS_DEFAULT_REGION
 from launch_wizard.common.enums import EBSVolumeType, FeatureName, OperationSystemType
 from launch_wizard.common.error_codes import ERR_AWS_CLIENT
-from launch_wizard.utils.ui_utils import error_and_exit
+from launch_wizard.utils.display_utils import style_var
+from launch_wizard.utils.ui_utils import error_and_exit, prompt_with_trim
 
 
 def main_command(
@@ -63,6 +65,13 @@ def main_command(
     assume_yes: Annotated[
         bool, typer.Option("--assume-yes", "-y", help="Automatically answer yes to all prompts")
     ] = False,
+    save_user_data_path: Annotated[
+        Optional[str], typer.Option(help="Path to save the generated user data script to a local file")
+    ] = None,
+    save_user_data_only: Annotated[
+        bool,
+        typer.Option(help="Generate and save user data only, without launching an EC2 instance"),
+    ] = False,
 ) -> None:
     """
     Launch EC2 instances with external storage arrays on AWS Outposts.
@@ -86,9 +95,16 @@ def main_command(
         root_volume_size: Size of the root volume in GiB (optional).
         root_volume_type: Type of the root volume to attach (optional).
         assume_yes: Automatically answer yes to all prompts (optional).
+        save_user_data_path: Path to save the generated user data script to a local file (optional).
+        save_user_data_only: Generate and save user data only, without launching an EC2 instance (optional).
     """
 
     global_config.assume_yes = assume_yes
+
+    # Validate mutual exclusivity of options
+    if save_user_data_only and not save_user_data_path:
+        Console().print(f"{style_var('--save-user-data-only')} requires the user data file path to be specified.")
+        save_user_data_path = prompt_with_trim("Enter the file path to save user data")
 
     # Create AWS service clients
     try:
@@ -99,21 +115,37 @@ def main_command(
     except ClientError as e:
         error_and_exit(str(e), code=ERR_AWS_CLIENT)
 
-    # Validate AWS resources and configuration
-    ami_id = validate_ami(ec2_client, ami_id)
-    subnet_id, outpost_arn = validate_subnet(ec2_client, subnet_id)
-    outpost_hardware_type = get_outpost_hardware_type(outposts_client, outpost_arn)
-    validate_network(ec2_client, subnet_id, outpost_hardware_type)
-    instance_type = validate_instance_type(outposts_client, instance_type, outpost_arn)
-    key_name = validate_key_pair(ec2_client, key_name)
-    security_group_id = validate_security_group(ec2_client, security_group_id)
-    instance_profile_name = validate_instance_profile(iam_client, instance_profile_name)
-    instance_name = validate_instance_name(instance_name)
+    # Skip AWS validation if only generating user data
+    if save_user_data_only:
+        # For user data only mode, we only need minimal context
+        # Set default values for required context variables
+        ami_id = None
+        subnet_id = None
+        outpost_hardware_type = None
+        instance_type = None
+        key_name = None
+        security_group_id = None
+        instance_profile_name = None
+        instance_name = None
+        root_volume_device_name = None
+        root_volume_size = None
+        root_volume_type = None
+    else:
+        # Validate AWS resources and configuration
+        ami_id = validate_ami(ec2_client, ami_id)
+        subnet_id, outpost_arn = validate_subnet(ec2_client, subnet_id)
+        outpost_hardware_type = get_outpost_hardware_type(outposts_client, outpost_arn)
+        validate_network(ec2_client, subnet_id, outpost_hardware_type)
+        instance_type = validate_instance_type(outposts_client, instance_type, outpost_arn)
+        key_name = validate_key_pair(ec2_client, key_name)
+        security_group_id = validate_security_group(ec2_client, security_group_id)
+        instance_profile_name = validate_instance_profile(iam_client, instance_profile_name)
+        instance_name = validate_instance_name(instance_name)
 
-    # Validate and prompt for root volume options if needed
-    root_volume_size, root_volume_type, root_volume_device_name = validate_root_volume_options(
-        ec2_client, ami_id, root_volume_size, root_volume_type
-    )
+        # Validate and prompt for root volume options if needed
+        root_volume_size, root_volume_type, root_volume_device_name = validate_root_volume_options(
+            ec2_client, ami_id, root_volume_size, root_volume_type
+        )
 
     # Store validated configuration in context for vendor sub-commands
     ctx.obj = ctx.obj or {}
@@ -134,5 +166,7 @@ def main_command(
             "root_volume_device_name": root_volume_device_name,
             "root_volume_size": root_volume_size,
             "root_volume_type": root_volume_type,
+            "save_user_data_path": save_user_data_path,
+            "save_user_data_only": save_user_data_only,
         }
     )

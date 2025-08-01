@@ -13,13 +13,7 @@ from rich.pretty import Pretty
 from launch_wizard.aws.iam import get_available_instance_profile_names
 from launch_wizard.aws.pagination import paginate_aws_response
 from launch_wizard.common.constants import DEFAULT_MINIMUM_ROOT_VOLUME_SIZE, VERIFIED_AMIS
-from launch_wizard.common.enums import (
-    EBSVolumeType,
-    FeatureName,
-    OperationSystemType,
-    OutpostHardwareType,
-    StorageProtocol,
-)
+from launch_wizard.common.enums import EBSVolumeType, FeatureName, OperationSystemType, OutpostHardwareType
 from launch_wizard.common.error_codes import (
     ERR_AWS_AMI_NOT_FOUND,
     ERR_AWS_CLIENT,
@@ -37,7 +31,11 @@ from launch_wizard.utils.display_utils import (
     style_var,
 )
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit, prompt_with_trim
-from launch_wizard.utils.user_data_utils import render_user_data
+from launch_wizard.utils.user_data_utils import (
+    generate_user_data_iscsi,
+    generate_user_data_nvme,
+    save_user_data_path_to_file,
+)
 
 
 def validate_ami(ec2_client: boto3.client, ami_id: Optional[str]) -> str:
@@ -846,6 +844,8 @@ def launch_instance_helper_nvme(
     host_nqn: str,
     subsystems: List[Dict[str, str]],
     guest_os_scripts: Optional[List[Dict[str, str]]],
+    save_user_data_path: Optional[str],
+    save_user_data_only: Optional[bool],
 ) -> None:
     """
     Launch an EC2 instance configured for NVMe storage connectivity.
@@ -874,30 +874,24 @@ def launch_instance_helper_nvme(
         host_nqn: The NVMe host qualified name for the instance.
         subsystems: List of NVMe subsystem configurations.
         guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
+        save_user_data_path: File path to save the generated user data script (optional).
+        save_user_data_only: If True, only generate and save user data without launching instance (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
     """
 
-    # Render userdata from template
-    user_data_inputs: Dict[str, Any] = {
-        "hostNQN": host_nqn,
-        "subsystems": subsystems,
-        "guestOsScripts": guest_os_scripts,
-    }
-    if enable_dm_multipath:
-        user_data_inputs["dmMultipath"] = True
+    # Generate user data script
+    user_data = generate_user_data_nvme(
+        feature_name=feature_name,
+        guest_os_type=guest_os_type,
+        host_nqn=host_nqn,
+        subsystems=subsystems,
+        enable_dm_multipath=enable_dm_multipath,
+        guest_os_scripts=guest_os_scripts,
+    )
 
-    user_data = render_user_data(feature_name, guest_os_type, StorageProtocol.NVME, user_data_inputs)
-
-    # Print out the generated user data script
-    Console().print(Panel(user_data, title="User Data Script", style="cyan"))
-
-    if not auto_confirm("Would you like to proceed with launching the instance using the above user data script?"):
-        error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
-
-    # Launch the instance
-    launch_instance(
+    launch_instance_helper(
         outpost_hardware_type=outpost_hardware_type,
         ec2_client=ec2_client,
         ami_id=ami_id,
@@ -911,6 +905,8 @@ def launch_instance_helper_nvme(
         root_volume_device_name=root_volume_device_name,
         root_volume_size=root_volume_size,
         root_volume_type=root_volume_type,
+        save_user_data_path=save_user_data_path,
+        save_user_data_only=save_user_data_only,
     )
 
 
@@ -933,6 +929,8 @@ def launch_instance_helper_iscsi(
     targets: List[Dict[str, str]],
     portals: List[Dict[str, str]],
     guest_os_scripts: Optional[List[Dict[str, str]]],
+    save_user_data_path: Optional[str],
+    save_user_data_only: Optional[bool],
 ) -> None:
     """
     Launch an EC2 instance configured for iSCSI storage connectivity.
@@ -961,25 +959,71 @@ def launch_instance_helper_iscsi(
         targets: List of iSCSI target configurations.
         portals: List of iSCSI portal configurations for discovery.
         guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
+        save_user_data_path: File path to save the generated user data script (optional).
+        save_user_data_only: If True, only generate and save user data without launching instance (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
     """
 
-    # Render userdata from template
-    user_data_inputs: Dict[str, Any] = {
-        "initiatorIQN": initiator_iqn,
-        "portals": portals,
-        "targets": targets,
-        "guestOsScripts": guest_os_scripts,
-        "isOutpostServer": outpost_hardware_type == OutpostHardwareType.SERVER,
-        "lniIndex": 1,
-    }
+    # Generate user data script
+    user_data = generate_user_data_iscsi(
+        feature_name=feature_name,
+        guest_os_type=guest_os_type,
+        outpost_hardware_type=outpost_hardware_type,
+        initiator_iqn=initiator_iqn,
+        targets=targets,
+        portals=portals,
+        guest_os_scripts=guest_os_scripts,
+    )
 
-    user_data = render_user_data(feature_name, guest_os_type, StorageProtocol.ISCSI, user_data_inputs)
+    launch_instance_helper(
+        outpost_hardware_type=outpost_hardware_type,
+        ec2_client=ec2_client,
+        ami_id=ami_id,
+        instance_type=instance_type,
+        subnet_id=subnet_id,
+        user_data=user_data,
+        key_name=key_name,
+        security_group_id=security_group_id,
+        instance_profile_name=instance_profile_name,
+        instance_name=instance_name,
+        root_volume_device_name=root_volume_device_name,
+        root_volume_size=root_volume_size,
+        root_volume_type=root_volume_type,
+        save_user_data_path=save_user_data_path,
+        save_user_data_only=save_user_data_only,
+    )
 
+
+def launch_instance_helper(
+    outpost_hardware_type: OutpostHardwareType,
+    ec2_client: boto3.client,
+    ami_id: str,
+    instance_type: str,
+    subnet_id: str,
+    user_data: str,
+    key_name: Optional[str],
+    security_group_id: Optional[str],
+    instance_profile_name: Optional[str],
+    instance_name: Optional[str],
+    root_volume_device_name: Optional[str],
+    root_volume_size: Optional[int],
+    root_volume_type: Optional[EBSVolumeType],
+    save_user_data_path: Optional[str],
+    save_user_data_only: Optional[bool],
+) -> None:
     # Print out the generated user data script
     Console().print(Panel(user_data, title="User Data Script", style="cyan"))
+
+    # Save user data to file if requested
+    if save_user_data_path:
+        save_user_data_path_to_file(user_data, save_user_data_path)
+
+    # If save_user_data_only is True, skip instance launching
+    if save_user_data_only:
+        Console().print("User data generation completed. Skipping EC2 instance launch.")
+        return
 
     if not auto_confirm("Would you like to proceed with launching the instance using the above user data script?"):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

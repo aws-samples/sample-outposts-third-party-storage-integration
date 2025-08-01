@@ -9,7 +9,7 @@ import chevron
 from rich.console import Console
 from rich.rule import Rule
 
-from launch_wizard.common.enums import FeatureName, OperationSystemType, StorageProtocol
+from launch_wizard.common.enums import FeatureName, OperationSystemType, OutpostHardwareType, StorageProtocol
 from launch_wizard.common.error_codes import (
     ERR_GUEST_OS_SCRIPT_NOT_FOUND,
     ERR_GUEST_OS_SCRIPT_READ_FAILED,
@@ -118,6 +118,123 @@ def render_user_data(
     with open(user_data_template_path, "r", encoding="utf-8") as template:
         user_data = chevron.render(template, user_data_template_data)
     return user_data
+
+
+def generate_user_data_iscsi(
+    feature_name: FeatureName,
+    guest_os_type: OperationSystemType,
+    outpost_hardware_type: OutpostHardwareType,
+    initiator_iqn: str,
+    targets: List[Dict[str, str]],
+    portals: List[Dict[str, str]],
+    guest_os_scripts: Optional[List[Dict[str, str]]],
+) -> str:
+    """
+    Generate user data script for iSCSI storage connectivity.
+
+    This function creates a user data script specifically configured for iSCSI storage
+    connections based on the provided configuration parameters.
+
+    Args:
+        feature_name: The storage feature being configured (data_volumes, localboot, or sanboot).
+        guest_os_type: The operating system type (linux or windows).
+        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
+        initiator_iqn: The iSCSI initiator qualified name for the instance.
+        targets: List of iSCSI target configurations.
+        portals: List of iSCSI portal configurations for discovery.
+        guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
+
+    Returns:
+        The generated user data script as a string.
+    """
+
+    # Render userdata from template
+    user_data_inputs: Dict[str, Any] = {
+        "initiatorIQN": initiator_iqn,
+        "portals": portals,
+        "targets": targets,
+        "guestOsScripts": guest_os_scripts,
+        "isOutpostServer": outpost_hardware_type == OutpostHardwareType.SERVER,
+        "lniIndex": 1,
+    }
+
+    return render_user_data(feature_name, guest_os_type, StorageProtocol.ISCSI, user_data_inputs)
+
+
+def generate_user_data_nvme(
+    feature_name: FeatureName,
+    guest_os_type: OperationSystemType,
+    host_nqn: str,
+    subsystems: List[Dict[str, str]],
+    enable_dm_multipath: Optional[bool],
+    guest_os_scripts: Optional[List[Dict[str, str]]],
+) -> str:
+    """
+    Generate user data script for NVMe storage connectivity.
+
+    This function creates a user data script specifically configured for NVMe storage
+    connections based on the provided configuration parameters.
+
+    Args:
+        feature_name: The storage feature being configured (data_volumes, localboot, or sanboot).
+        guest_os_type: The operating system type (linux or windows).
+        host_nqn: The NVMe host qualified name for the instance.
+        subsystems: List of NVMe subsystem configurations.
+        enable_dm_multipath: Whether to enable Device Mapper Multipath (optional).
+        guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
+
+    Returns:
+        The generated user data script as a string.
+    """
+
+    # Render userdata from template
+    user_data_inputs: Dict[str, Any] = {
+        "hostNQN": host_nqn,
+        "subsystems": subsystems,
+        "guestOsScripts": guest_os_scripts,
+        "dmMultipath": enable_dm_multipath,
+    }
+
+    return render_user_data(feature_name, guest_os_type, StorageProtocol.NVME, user_data_inputs)
+
+
+def save_user_data_path_to_file(user_data: str, file_path: str) -> str:
+    """
+    Save user data script to a local file.
+
+    This function saves the generated user data script to a local file. If no file path
+    is provided, it prompts the user to enter one. It creates the directory if it doesn't exist.
+
+    Args:
+        user_data: The user data script content to save.
+        file_path: The file path to save to.
+
+    Returns:
+        The actual file path where the user data was saved.
+
+    Raises:
+        typer.Exit: If file writing fails or the user cancels the operation.
+    """
+
+    # Expand user directory (~) if present
+    file_path = os.path.expanduser(file_path)
+
+    # Create directory if it doesn't exist
+    directory = os.path.dirname(file_path)
+    if directory and not os.path.exists(directory):
+        try:
+            os.makedirs(directory, exist_ok=True)
+            Console().print(f"Created directory: {style_var(directory)}")
+        except OSError as e:
+            error_and_exit(f"Failed to create directory {directory}: {e}", code=ERR_GUEST_OS_SCRIPT_READ_FAILED)
+
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(user_data)
+        Console().print(f"User data script saved to: {style_var(file_path)}")
+        return file_path
+    except OSError as e:
+        error_and_exit(f"Failed to save user data to {file_path}: {e}", code=ERR_GUEST_OS_SCRIPT_READ_FAILED)
 
 
 def process_guest_os_scripts(script_paths: Optional[List[str]]) -> List[Dict[str, str]]:

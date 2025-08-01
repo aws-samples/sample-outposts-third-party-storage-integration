@@ -168,4 +168,6 @@ def nvme(
         host_nqn=ctx.obj["host_nqn"],
         subsystems=ctx.obj["subsystems"],
         guest_os_scripts=ctx.obj["guest_os_scripts"],
+        save_user_data_path=ctx.obj["save_user_data_path"],
+        save_user_data_only=ctx.obj["save_user_data_only"],
     )
