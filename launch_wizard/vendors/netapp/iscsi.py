@@ -155,8 +155,10 @@ def iscsi(
     # Assign LUN to targets if specified
     assign_lun_to_targets(targets, lun)
 
+    aws_client = ctx.obj["aws_client"]
+
     auth_secret_names = validate_auth_secret_names_for_targets(
-        auth_secret_names_raw_input, targets, "targets", ctx.obj.get("secrets_manager_client")
+        auth_secret_names_raw_input, targets, "targets", aws_client
     )
 
     # Assign auth secret names to targets
@@ -168,7 +170,7 @@ def iscsi(
         discovery_portal_auth_secret_names_raw_input,
         portals,
         "discovery portals",
-        ctx.obj.get("secrets_manager_client"),
+        aws_client,
     )
 
     # Assign auth secret names to discovery portals
@@ -190,10 +192,10 @@ def iscsi(
     ctx.obj["guest_os_scripts"] = guest_os_scripts
 
     launch_instance_helper_iscsi(
-        feature_name=ctx.obj["feature_name"],
-        guest_os_type=ctx.obj["guest_os_type"],
+        feature_name=feature_name,
+        guest_os_type=guest_os_type,
+        ec2_client=aws_client.ec2,
         outpost_hardware_type=ctx.obj["outpost_hardware_type"],
-        ec2_client=ctx.obj["ec2_client"],
         ami_id=ctx.obj["ami_id"],
         instance_type=ctx.obj["instance_type"],
         subnet_id=ctx.obj["subnet_id"],

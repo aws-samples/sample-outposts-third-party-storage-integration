@@ -121,8 +121,10 @@ def nvme(
         else:
             subsystems.append({"ip": subsystem_endpoint, "nqn": subsystem_nqn})
 
+    aws_client = ctx.obj["aws_client"]
+
     auth_secret_names = validate_auth_secret_names_for_targets(
-        auth_secret_names_raw_input, subsystems, "subsystems", ctx.obj.get("secrets_manager_client")
+        auth_secret_names_raw_input, subsystems, "subsystems", aws_client
     )
 
     # Assign auth secret names to subsystems
@@ -144,10 +146,10 @@ def nvme(
     ctx.obj["guest_os_scripts"] = guest_os_scripts
 
     launch_instance_helper_nvme(
-        feature_name=ctx.obj["feature_name"],
-        guest_os_type=ctx.obj["guest_os_type"],
+        feature_name=feature_name,
+        guest_os_type=guest_os_type,
+        ec2_client=aws_client.ec2,
         outpost_hardware_type=ctx.obj["outpost_hardware_type"],
-        ec2_client=ctx.obj["ec2_client"],
         ami_id=ctx.obj["ami_id"],
         instance_type=ctx.obj["instance_type"],
         subnet_id=ctx.obj["subnet_id"],

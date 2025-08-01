@@ -4,12 +4,11 @@ Main command logic for the CLI application.
 
 from typing import Optional
 
-import boto3
 import typer
-from botocore.exceptions import ClientError
 from rich.console import Console
 from typing_extensions import Annotated
 
+from launch_wizard.aws.aws_client import AWSClient
 from launch_wizard.aws.ec2 import (
     validate_ami,
     validate_instance_name,
@@ -24,9 +23,8 @@ from launch_wizard.aws.outposts import get_outpost_hardware_type, validate_insta
 from launch_wizard.common.config import global_config
 from launch_wizard.common.constants import AWS_DEFAULT_REGION
 from launch_wizard.common.enums import EBSVolumeType, FeatureName, OperationSystemType
-from launch_wizard.common.error_codes import ERR_AWS_CLIENT
 from launch_wizard.utils.display_utils import style_var
-from launch_wizard.utils.ui_utils import error_and_exit, prompt_with_trim
+from launch_wizard.utils.ui_utils import prompt_with_trim
 
 
 def main_command(
@@ -106,14 +104,8 @@ def main_command(
         Console().print(f"{style_var('--save-user-data-only')} requires the user data file path to be specified.")
         save_user_data_path = prompt_with_trim("Enter the file path to save user data")
 
-    # Create AWS service clients
-    try:
-        ec2_client = boto3.client("ec2", region_name=region_name)
-        iam_client = boto3.client("iam", region_name=region_name)
-        outposts_client = boto3.client("outposts", region_name=region_name)
-        secrets_manager_client = boto3.client("secretsmanager", region_name=region_name)
-    except ClientError as e:
-        error_and_exit(str(e), code=ERR_AWS_CLIENT)
+    # Create AWS client wrapper
+    aws_client = AWSClient(region_name)
 
     # Skip AWS validation if only generating user data
     if save_user_data_only:
@@ -132,19 +124,19 @@ def main_command(
         root_volume_type = None
     else:
         # Validate AWS resources and configuration
-        ami_id = validate_ami(ec2_client, ami_id)
-        subnet_id, outpost_arn = validate_subnet(ec2_client, subnet_id)
-        outpost_hardware_type = get_outpost_hardware_type(outposts_client, outpost_arn)
-        validate_network(ec2_client, subnet_id, outpost_hardware_type)
-        instance_type = validate_instance_type(outposts_client, instance_type, outpost_arn)
-        key_name = validate_key_pair(ec2_client, key_name)
-        security_group_id = validate_security_group(ec2_client, security_group_id)
-        instance_profile_name = validate_instance_profile(iam_client, instance_profile_name)
+        ami_id = validate_ami(aws_client.ec2, ami_id)
+        subnet_id, outpost_arn = validate_subnet(aws_client.ec2, subnet_id)
+        outpost_hardware_type = get_outpost_hardware_type(aws_client.outposts, outpost_arn)
+        validate_network(aws_client.ec2, subnet_id, outpost_hardware_type)
+        instance_type = validate_instance_type(aws_client.outposts, instance_type, outpost_arn)
+        key_name = validate_key_pair(aws_client.ec2, key_name)
+        security_group_id = validate_security_group(aws_client.ec2, security_group_id)
+        instance_profile_name = validate_instance_profile(aws_client.iam, instance_profile_name)
         instance_name = validate_instance_name(instance_name)
 
         # Validate and prompt for root volume options if needed
         root_volume_size, root_volume_type, root_volume_device_name = validate_root_volume_options(
-            ec2_client, ami_id, root_volume_size, root_volume_type
+            aws_client.ec2, ami_id, root_volume_size, root_volume_type
         )
 
     # Store validated configuration in context for vendor sub-commands
@@ -153,9 +145,8 @@ def main_command(
         {
             "feature_name": feature_name,
             "guest_os_type": guest_os_type,
+            "aws_client": aws_client,
             "outpost_hardware_type": outpost_hardware_type,
-            "ec2_client": ec2_client,
-            "secrets_manager_client": secrets_manager_client,
             "ami_id": ami_id,
             "instance_type": instance_type,
             "subnet_id": subnet_id,

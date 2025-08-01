@@ -8,10 +8,10 @@ that user inputs are valid and compatible with the selected features and storage
 
 from typing import Any, Dict, List, Literal, Optional, Union
 
-import boto3
 from rich.console import Console
 from rich.rule import Rule
 
+from launch_wizard.aws.aws_client import AWSClient
 from launch_wizard.aws.secrets_manager import get_available_secret_names
 from launch_wizard.common.constants import ALLOWED_STORAGE_TARGET_LIMITS, OPTIONAL_VALUE_NONE_PLACEHOLDER
 from launch_wizard.common.enums import FeatureName, OperationSystemType, StorageProtocol
@@ -185,7 +185,7 @@ def validate_auth_secret_names_for_targets(
     auth_secret_names_raw_input: Optional[List[str]],
     targets: List[Dict[str, Any]],
     target_type: Union[Literal["discovery portals"], Literal["subsystems"], Literal["targets"]],
-    secrets_manager_client: boto3.client,
+    aws_client: AWSClient,
 ) -> List[Optional[str]]:
     """
     Validates and adjusts auth secret names to match the number of targets/subsystems.
@@ -194,7 +194,7 @@ def validate_auth_secret_names_for_targets(
         auth_secret_names_raw_input: The raw auth_secret_names input
         targets: List of target/subsystem dictionaries
         target_type: Type of targets displayed in messages (e.g., "targets", "subsystems")
-        secrets_manager_client: AWS Secrets Manager client for validating secret names
+        aws_client: AWS client wrapper
 
     Returns:
         Validated list of auth secret names matching the number of targets
@@ -205,7 +205,7 @@ def validate_auth_secret_names_for_targets(
 
     auth_secret_names = process_auth_secret_names(auth_secret_names_raw_input)
 
-    available_secret_names = get_available_secret_names(secrets_manager_client)
+    available_secret_names = get_available_secret_names(aws_client.secrets_manager)
 
     if not auth_secret_names:
         if auto_confirm(

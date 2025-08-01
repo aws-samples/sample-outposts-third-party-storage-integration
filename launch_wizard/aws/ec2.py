@@ -708,8 +708,8 @@ def create_network_interface_with_coip(ec2_client: boto3.client, subnet_id: str,
 
 
 def launch_instance(
-    outpost_hardware_type: OutpostHardwareType,
     ec2_client: boto3.client,
+    outpost_hardware_type: OutpostHardwareType,
     ami_id: str,
     instance_type: str,
     subnet_id: str,
@@ -730,8 +730,8 @@ def launch_instance(
     and configures appropriate network interfaces, security groups, and storage options.
 
     Args:
-        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ec2_client: The boto3 EC2 client for AWS API calls.
+        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ami_id: The AMI ID to launch the instance from.
         instance_type: The EC2 instance type to launch.
         subnet_id: The subnet ID where the instance will be launched.
@@ -828,8 +828,8 @@ def launch_instance(
 def launch_instance_helper_nvme(
     feature_name: FeatureName,
     guest_os_type: OperationSystemType,
-    outpost_hardware_type: OutpostHardwareType,
     ec2_client: boto3.client,
+    outpost_hardware_type: OutpostHardwareType,
     ami_id: str,
     instance_type: str,
     subnet_id: str,
@@ -858,8 +858,8 @@ def launch_instance_helper_nvme(
     Args:
         feature_name: The storage feature being configured (data_volumes, localboot, or sanboot).
         guest_os_type: The operating system type (linux or windows).
-        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ec2_client: The boto3 EC2 client for AWS API calls.
+        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ami_id: The AMI ID to launch the instance from.
         instance_type: The EC2 instance type to launch.
         subnet_id: The subnet ID where the instance will be launched.
@@ -892,8 +892,8 @@ def launch_instance_helper_nvme(
     )
 
     launch_instance_helper(
-        outpost_hardware_type=outpost_hardware_type,
         ec2_client=ec2_client,
+        outpost_hardware_type=outpost_hardware_type,
         ami_id=ami_id,
         instance_type=instance_type,
         subnet_id=subnet_id,
@@ -913,8 +913,8 @@ def launch_instance_helper_nvme(
 def launch_instance_helper_iscsi(
     feature_name: FeatureName,
     guest_os_type: OperationSystemType,
-    outpost_hardware_type: OutpostHardwareType,
     ec2_client: boto3.client,
+    outpost_hardware_type: OutpostHardwareType,
     ami_id: str,
     instance_type: str,
     subnet_id: str,
@@ -943,8 +943,8 @@ def launch_instance_helper_iscsi(
     Args:
         feature_name: The storage feature being configured (data_volumes, localboot, or sanboot).
         guest_os_type: The operating system type (linux or windows).
-        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ec2_client: The boto3 EC2 client for AWS API calls.
+        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
         ami_id: The AMI ID to launch the instance from.
         instance_type: The EC2 instance type to launch.
         subnet_id: The subnet ID where the instance will be launched.
@@ -978,8 +978,8 @@ def launch_instance_helper_iscsi(
     )
 
     launch_instance_helper(
-        outpost_hardware_type=outpost_hardware_type,
         ec2_client=ec2_client,
+        outpost_hardware_type=outpost_hardware_type,
         ami_id=ami_id,
         instance_type=instance_type,
         subnet_id=subnet_id,
@@ -997,8 +997,8 @@ def launch_instance_helper_iscsi(
 
 
 def launch_instance_helper(
-    outpost_hardware_type: OutpostHardwareType,
     ec2_client: boto3.client,
+    outpost_hardware_type: OutpostHardwareType,
     ami_id: str,
     instance_type: str,
     subnet_id: str,
@@ -1030,8 +1030,8 @@ def launch_instance_helper(
 
     # Launch the instance
     launch_instance(
-        outpost_hardware_type=outpost_hardware_type,
         ec2_client=ec2_client,
+        outpost_hardware_type=outpost_hardware_type,
         ami_id=ami_id,
         instance_type=instance_type,
         subnet_id=subnet_id,
