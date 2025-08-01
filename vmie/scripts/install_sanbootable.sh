@@ -78,10 +78,28 @@ install_sanbootable() {
     log "Sanbootable installation completed successfully!"
 }
 
+wait_for_apt_locks() {
+    local max_attempts=60  # Maximum number of attempts (10 minutes total)
+    local attempt=1
+
+    while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+        if [ $attempt -ge $max_attempts ]; then
+            log "ERROR: Package manager is still locked after 10 minutes. Aborting."
+            exit 1
+        fi
+        log "Waiting for package manager locks to be released... ($attempt/$max_attempts)"
+        sleep 10
+        attempt=$((attempt + 1))
+    done
+}
+
 # Function to install with apt (Debian/Ubuntu)
 install_with_apt() {
     log "Installing sanbootable using apt..."
-    
+
+    # Wait for any existing locks to be released
+    wait_for_apt_locks
+
     # Set non-interactive mode
     export DEBIAN_FRONTEND=noninteractive
     
