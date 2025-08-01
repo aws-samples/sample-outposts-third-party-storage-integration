@@ -188,14 +188,14 @@ def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) ->
         typer.Exit: If the key pair is not found in the account or if an AWS error occurs.
     """
 
+    if not key_pair_name and auto_confirm(
+        "No key pair name specified. Would you like to proceed without a key pair? (This will limit your ability to connect to the instance)"
+    ):
+        return None
+
     available_key_pair_names = get_available_key_pair_names(ec2_client)
 
     if not key_pair_name:
-        if auto_confirm(
-            "No key pair name specified. Would you like to proceed without a key pair? (This will limit your ability to connect to the instance)"
-        ):
-            return None
-
         print_table_with_single_column("Available key pairs", available_key_pair_names, column_name="Key Pair Name")
 
         key_pair_name = prompt_with_trim("Please enter a key pair name")
@@ -229,12 +229,14 @@ def validate_security_group(ec2_client: boto3.client, security_group_id: Optiona
         typer.Exit: If the security group is not found in the account or if an AWS error occurs.
     """
 
+    if not security_group_id and auto_confirm(
+        "No security group specified. Would you like to use the default security group in the VPC?"
+    ):
+        return None
+
     available_security_group_ids = get_available_security_group_ids(ec2_client)
 
     if not security_group_id:
-        if auto_confirm("No security group specified. Would you like to use the default security group in the VPC?"):
-            return None
-
         print_table_with_single_column(
             "Available security groups", available_security_group_ids, column_name="Security Group ID"
         )
@@ -270,14 +272,14 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
         typer.Exit: If the instance profile is not found in the account or if an AWS error occurs.
     """
 
+    if not instance_profile_name and auto_confirm(
+        "No instance profile specified. Would you like to proceed without an instance profile? (This will limit the instance's ability to access AWS services)"
+    ):
+        return None
+
     available_instance_profile_names = get_available_instance_profile_names(iam_client)
 
     if not instance_profile_name:
-        if auto_confirm(
-            "No instance profile specified. Would you like to proceed without an instance profile? (This will limit the instance's ability to access AWS services)"
-        ):
-            return None
-
         print_table_with_single_column(
             "Available instance profiles", available_instance_profile_names, column_name="Instance Profile Name"
         )

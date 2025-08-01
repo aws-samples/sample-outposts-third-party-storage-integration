@@ -205,14 +205,14 @@ def validate_auth_secret_names_for_targets(
 
     auth_secret_names = process_auth_secret_names(auth_secret_names_raw_input)
 
+    if not auth_secret_names and auto_confirm(
+        f"No authentication secrets specified for the {target_type}. Would you like to proceed without authentication?"
+    ):
+        return [None] * len(targets)
+
     available_secret_names = get_available_secret_names(aws_client.secrets_manager)
 
     if not auth_secret_names:
-        if auto_confirm(
-            f"No authentication secrets specified for the {target_type}. Would you like to proceed without authentication?"
-        ):
-            return [None] * len(targets)
-
         print_table_with_single_column(
             "Available secrets in AWS Secrets Manager", available_secret_names, "Secret Name"
         )
