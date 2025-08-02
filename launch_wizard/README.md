@@ -9,6 +9,7 @@ The Launch Wizard provides a Python-based solution for launching EC2 instances o
 - **OS Support**: Both Linux and Windows guest operating systems
 - **Storage Features**: Data volumes, LocalBoot, and SAN boot configurations
 - **Interactive CLI**: Guided experience with validation at each step
+- **User Data Generation**: Generate and save user data scripts without launching instances
 - **AWS Integration**: Native AWS SDK integration with proper error handling
 - **Type Safety**: Full type hints throughout the codebase
 
@@ -196,6 +197,8 @@ The Launch Wizard uses an interactive approach by default. The following common 
 - `--subnet-id`: Outpost subnet where the instance will be launched
 - `--instance-type`: Instance type to launch
 - `--key-name`: Key pair name for SSH access
+- `--save-user-data-path`: Path to save the generated user data script to a local file
+- `--save-user-data-only`: Generate and save user data only, without launching an EC2 instance
 - `--assume-yes`: Automatically answer yes to all prompts
 
 For a complete list of common options, you can use:
@@ -203,6 +206,37 @@ For a complete list of common options, you can use:
 ```bash
 python -m launch_wizard --help
 ```
+
+### User Data Generation and Saving
+
+The Launch Wizard now supports generating and saving user data scripts without launching EC2 instances. This feature is useful for:
+
+- **Script Generation**: Create user data scripts for later use or review
+- **Automation**: Pre-generate scripts for use in other deployment tools
+- **Debugging**: Examine the generated user data before instance launch
+
+#### User Data Options
+
+- `--save-user-data-path`: Specify a file path to save the generated user data script
+- `--save-user-data-only`: Generate and save user data only, without launching an EC2 instance (requires `--save-user-data-path`)
+
+#### User Data Generation Examples
+
+Generate user data script without launching an instance:
+
+```bash
+# Generate NetApp NVMe user data script only
+python -m launch_wizard --save-user-data-path /tmp/userdata.sh --save-user-data-only netapp nvme
+
+# Generate Pure Storage iSCSI user data and launch instance
+python -m launch_wizard --save-user-data-path /tmp/userdata.sh purestorage iscsi
+```
+
+#### Behavior
+
+- When `--save-user-data-only` is specified without `--save-user-data-path`, the tool will prompt for a file path
+- The tool will create the directory structure if it doesn't exist
+- When using `--save-user-data-only`, AWS resource validation is skipped since no instance will be launched
 
 ### Guest OS Scripts
 
@@ -325,6 +359,22 @@ python -m launch_wizard \
     --guest-os-script /path/to/config.yml \
     --guest-os-script /path/to/setup.sh \
     # additional options ...
+```
+
+#### User Data Generation Only
+
+For scenarios where you only need to generate user data scripts without launching instances:
+
+```bash
+python -m launch_wizard \
+    --save-user-data-path /path/to/userdata.sh \
+    --save-user-data-only \
+    --assume-yes \
+    netapp nvme \
+    --netapp-management-ip 10.0.0.10 \
+    --netapp-username admin \
+    --netapp-password "SecurePassword123" \
+    # vendor-specific options ...
 ```
 
 This approach is ideal for scripting and CI/CD pipelines where human interaction is not possible. For security reasons, consider using AWS Secrets Manager to store and retrieve vendor credentials rather than including them directly in command-line arguments.
