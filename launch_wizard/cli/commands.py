@@ -60,15 +60,15 @@ def main_command(
     instance_name: Annotated[Optional[str], typer.Option(help="Name to assign to the EC2 instance")] = None,
     root_volume_size: Annotated[Optional[int], typer.Option(help="Size of the root volume in GiB")] = None,
     root_volume_type: Annotated[Optional[EBSVolumeType], typer.Option(help="Type of the root volume to attach")] = None,
-    assume_yes: Annotated[
-        bool, typer.Option("--assume-yes", "-y", help="Automatically answer yes to all prompts")
-    ] = False,
     save_user_data_path: Annotated[
         Optional[str], typer.Option(help="Path to save the generated user data script to a local file")
     ] = None,
     save_user_data_only: Annotated[
         bool,
         typer.Option(help="Generate and save user data only, without launching an EC2 instance"),
+    ] = False,
+    assume_yes: Annotated[
+        bool, typer.Option("--assume-yes", "-y", help="Automatically answer yes to all prompts")
     ] = False,
 ) -> None:
     """
@@ -92,9 +92,9 @@ def main_command(
         instance_name: Name to assign to the EC2 instance (optional, will prompt if not provided).
         root_volume_size: Size of the root volume in GiB (optional).
         root_volume_type: Type of the root volume to attach (optional).
-        assume_yes: Automatically answer yes to all prompts (optional).
         save_user_data_path: Path to save the generated user data script to a local file (optional).
         save_user_data_only: Generate and save user data only, without launching an EC2 instance (optional).
+        assume_yes: Automatically answer yes to all prompts (optional).
     """
 
     global_config.assume_yes = assume_yes
