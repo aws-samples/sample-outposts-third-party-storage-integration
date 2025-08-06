@@ -162,7 +162,7 @@ def iscsi(
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)
-    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name)
+    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name, guest_os_type)
 
     ctx.obj["initiator_iqn"] = initiator_iqn
     ctx.obj["targets"] = targets

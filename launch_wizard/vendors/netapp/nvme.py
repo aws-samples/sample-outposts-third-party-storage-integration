@@ -144,7 +144,7 @@ def nvme(
     enable_dm_multipath = validate_enable_dm_multipath(enable_dm_multipath)
 
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)
-    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name)
+    guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name, guest_os_type)
 
     ctx.obj["host_nqn"] = host_nqn
     ctx.obj["subsystems"] = subsystems

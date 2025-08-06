@@ -271,7 +271,17 @@ This interactive mode allows you to add multiple script files one at a time and 
 #### Important Notes
 
 - Guest OS scripts are **only supported** for `localboot` and `sanboot` features
+- Guest OS scripts are **not supported** for Windows guest operating systems
+    - Guest OS scripts require the multipart user data format, which Windows AMIs on EC2 do not support
+    - Windows AMIs use EC2Config, EC2Launch, or EC2Launch v2 to handle user data and expect a single batch (`<script>…</script>`) or PowerShell (`<powershell>…</powershell>`) payload
+    - There is no native support for multipart user data on Windows, unlike Linux images with cloud-init
+    - Reference: [EC2 User Data Documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
+    - **Workaround Disclaimer**: While it is technically possible to pre-install cloudbase-init in Windows OS before SAN boot or LocalBoot to handle multipart user data, this solution is **not validated** and has significant limitations:
+        - cloudbase-init only works with IMDSv1, not IMDSv2, which goes against AWS security guidelines
+        - This approach is unsupported and may lead to unpredictable behavior
+        - Use this workaround at your own risk and only if absolutely necessary
 - Scripts specified for `data_volumes` feature will be ignored with a warning message
+- Scripts specified for Windows guest OS will be ignored with a warning message
 - Scripts are executed in the order they are specified
 - Ensure scripts have appropriate permissions and are compatible with the target AMI's operating system
 

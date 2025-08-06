@@ -323,7 +323,7 @@ def _determine_script_content_type(file_path: str, content: str) -> str:
 
 
 def process_guest_os_scripts_input(
-    guest_os_script_paths: Optional[List[str]], feature_name: FeatureName
+    guest_os_script_paths: Optional[List[str]], feature_name: FeatureName, guest_os_type: OperationSystemType
 ) -> List[Dict[str, str]]:
     """
     Process guest OS scripts for vendor subcommands with feature validation.
@@ -336,6 +336,7 @@ def process_guest_os_scripts_input(
     Args:
         guest_os_script_paths: List of file paths to script files. Can be None or empty.
         feature_name: The current feature being used.
+        guest_os_type: The type of guest OS being used.
 
     Returns:
         List of dictionaries with 'type' and 'content' keys for each script.
@@ -352,8 +353,14 @@ def process_guest_os_scripts_input(
     if feature_name not in [FeatureName.LOCALBOOT, FeatureName.SANBOOT]:
         if guest_os_script_paths:
             Console().print(
-                f"Warning: Guest OS scripts are only supported for {style_var('localboot')} and {style_var('sanboot')} features. Scripts will be ignored."
+                f"Warning: Guest OS scripts are only supported for {style_var(FeatureName.LOCALBOOT.name)} and {style_var(FeatureName.SANBOOT.name)} features. Scripts will be ignored."
             )
+        return guest_os_scripts
+
+    if guest_os_type == OperationSystemType.WINDOWS:
+        Console().print(
+            f"Warning: Guest OS scripts are not supported for {style_var(OperationSystemType.WINDOWS.name)} guest OS type. Scripts will be ignored."
+        )
         return guest_os_scripts
 
     # If no scripts provided and feature supports them, prompt the user
