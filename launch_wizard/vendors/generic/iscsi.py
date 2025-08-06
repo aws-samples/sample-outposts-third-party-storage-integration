@@ -4,9 +4,10 @@ import typer
 from rich.console import Console
 from typing_extensions import Annotated
 
+from launch_wizard.aws.aws_client import AWSClient
 from launch_wizard.aws.ec2 import launch_instance_helper_iscsi
 from launch_wizard.common.constants import OPTIONAL_VALUE_NONE_PLACEHOLDER
-from launch_wizard.common.enums import StorageProtocol
+from launch_wizard.common.enums import FeatureName, OperationSystemType, StorageProtocol
 from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_USER_ABORT
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip_and_port_list
@@ -85,8 +86,10 @@ def iscsi(
         typer.Exit: If the feature is not supported, target configuration is invalid, or the user cancels the operation.
     """
 
-    feature_name = ctx.obj["feature_name"]
-    guest_os_type = ctx.obj["guest_os_type"]
+    feature_name: FeatureName = ctx.obj["feature_name"]
+    guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
+    aws_client: AWSClient = ctx.obj["aws_client"]
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.ISCSI)
 
     if not initiator_iqn:
@@ -133,8 +136,6 @@ def iscsi(
     # Assign LUN to targets if specified
     assign_lun_to_targets(targets, lun)
 
-    aws_client = ctx.obj["aws_client"]
-
     auth_secret_names = validate_auth_secret_names_for_targets(
         auth_secret_names_raw_input, targets, "targets", aws_client
     )
@@ -164,11 +165,6 @@ def iscsi(
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)
     guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name, guest_os_type)
 
-    ctx.obj["initiator_iqn"] = initiator_iqn
-    ctx.obj["targets"] = targets
-    ctx.obj["portals"] = portals
-    ctx.obj["guest_os_scripts"] = guest_os_scripts
-
     launch_instance_helper_iscsi(
         feature_name=feature_name,
         guest_os_type=guest_os_type,
@@ -184,10 +180,10 @@ def iscsi(
         root_volume_device_name=ctx.obj["root_volume_device_name"],
         root_volume_size=ctx.obj["root_volume_size"],
         root_volume_type=ctx.obj["root_volume_type"],
-        initiator_iqn=ctx.obj["initiator_iqn"],
-        targets=ctx.obj["targets"],
-        portals=ctx.obj["portals"],
-        guest_os_scripts=ctx.obj["guest_os_scripts"],
+        initiator_iqn=initiator_iqn,
+        targets=targets,
+        portals=portals,
+        guest_os_scripts=guest_os_scripts,
         save_user_data_path=ctx.obj["save_user_data_path"],
         save_user_data_only=ctx.obj["save_user_data_only"],
     )

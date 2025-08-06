@@ -836,7 +836,6 @@ def launch_instance_helper_nvme(
     instance_type: str,
     subnet_id: str,
     key_name: Optional[str],
-    enable_dm_multipath: Optional[bool],
     security_group_id: Optional[str],
     instance_profile_name: Optional[str],
     instance_name: Optional[str],
@@ -845,6 +844,7 @@ def launch_instance_helper_nvme(
     root_volume_type: Optional[EBSVolumeType],
     host_nqn: str,
     subsystems: List[Dict[str, str]],
+    enable_dm_multipath: Optional[bool],
     guest_os_scripts: Optional[List[Dict[str, str]]],
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
@@ -866,7 +866,6 @@ def launch_instance_helper_nvme(
         instance_type: The EC2 instance type to launch.
         subnet_id: The subnet ID where the instance will be launched.
         key_name: The key pair name for SSH access (optional).
-        enable_dm_multipath: Whether to enable Device Mapper Multipath (optional).
         security_group_id: The security group ID to associate (optional).
         instance_profile_name: The IAM instance profile name to attach (optional).
         instance_name: The name to assign to the instance as a 'Name' tag (optional).
@@ -875,6 +874,7 @@ def launch_instance_helper_nvme(
         root_volume_type: The root volume type (optional).
         host_nqn: The NVMe host qualified name for the instance.
         subsystems: List of NVMe subsystem configurations.
+        enable_dm_multipath: Whether to enable Device Mapper Multipath (optional).
         guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
         save_user_data_path: File path to save the generated user data script (optional).
         save_user_data_only: If True, only generate and save user data without launching instance (optional).

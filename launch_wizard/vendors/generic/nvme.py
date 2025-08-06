@@ -4,9 +4,10 @@ import typer
 from rich.console import Console
 from typing_extensions import Annotated
 
+from launch_wizard.aws.aws_client import AWSClient
 from launch_wizard.aws.ec2 import launch_instance_helper_nvme
 from launch_wizard.common.constants import OPTIONAL_VALUE_NONE_PLACEHOLDER
-from launch_wizard.common.enums import StorageProtocol
+from launch_wizard.common.enums import FeatureName, OperationSystemType, StorageProtocol
 from launch_wizard.common.error_codes import ERR_INPUT_INVALID, ERR_USER_ABORT
 from launch_wizard.utils.display_utils import print_table_with_multiple_columns, style_var
 from launch_wizard.utils.network_utils import validate_ip_and_port_list
@@ -76,8 +77,10 @@ def nvme(
         typer.Exit: If the feature is not supported, subsystem configuration is invalid, or the user cancels the operation.
     """
 
-    feature_name = ctx.obj["feature_name"]
-    guest_os_type = ctx.obj["guest_os_type"]
+    feature_name: FeatureName = ctx.obj["feature_name"]
+    guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
+    aws_client: AWSClient = ctx.obj["aws_client"]
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.NVME)
 
     if not host_nqn:
@@ -121,8 +124,6 @@ def nvme(
         else:
             subsystems.append({"ip": subsystem_endpoint, "nqn": subsystem_nqn})
 
-    aws_client = ctx.obj["aws_client"]
-
     auth_secret_names = validate_auth_secret_names_for_targets(
         auth_secret_names_raw_input, subsystems, "subsystems", aws_client
     )
@@ -140,11 +141,6 @@ def nvme(
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)
     guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name, guest_os_type)
 
-    ctx.obj["host_nqn"] = host_nqn
-    ctx.obj["subsystems"] = subsystems
-    ctx.obj["enable_dm_multipath"] = enable_dm_multipath
-    ctx.obj["guest_os_scripts"] = guest_os_scripts
-
     launch_instance_helper_nvme(
         feature_name=feature_name,
         guest_os_type=guest_os_type,
@@ -154,16 +150,16 @@ def nvme(
         instance_type=ctx.obj["instance_type"],
         subnet_id=ctx.obj["subnet_id"],
         key_name=ctx.obj["key_name"],
-        enable_dm_multipath=ctx.obj["enable_dm_multipath"],
         security_group_id=ctx.obj["security_group_id"],
         instance_profile_name=ctx.obj["instance_profile_name"],
         instance_name=ctx.obj["instance_name"],
         root_volume_device_name=ctx.obj["root_volume_device_name"],
         root_volume_size=ctx.obj["root_volume_size"],
         root_volume_type=ctx.obj["root_volume_type"],
-        host_nqn=ctx.obj["host_nqn"],
-        subsystems=ctx.obj["subsystems"],
-        guest_os_scripts=ctx.obj["guest_os_scripts"],
+        host_nqn=host_nqn,
+        subsystems=subsystems,
+        enable_dm_multipath=enable_dm_multipath,
+        guest_os_scripts=guest_os_scripts,
         save_user_data_path=ctx.obj["save_user_data_path"],
         save_user_data_only=ctx.obj["save_user_data_only"],
     )
