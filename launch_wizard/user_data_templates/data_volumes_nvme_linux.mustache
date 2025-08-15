@@ -1,12 +1,44 @@
 #!/bin/bash
 
-yum update -y
-yum install -y nvme-cli
+# Update package lists
+if command -v dnf >/dev/null 2>&1; then
+    dnf update -y
+elif command -v yum >/dev/null 2>&1; then
+    yum update -y
+elif command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+else
+    echo "No supported package manager found" && exit 1
+fi
+
+# Install packages
+install_packages() {
+    if command -v dnf >/dev/null 2>&1; then
+        dnf install -y "$@"
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y "$@"
+    elif command -v apt-get >/dev/null 2>&1; then
+        apt-get install -y "$@"
+    fi
+}
+
+install_packages nvme-cli
 {{#authRequired}}
-yum install -y awscli jq
+if command -v apt-get >/dev/null 2>&1; then
+    # Use snap for AWS CLI on Ubuntu/Debian as awscli package was removed from Ubuntu 24.04 repositories
+    snap install aws-cli --classic
+else
+    install_packages awscli
+fi
+install_packages jq
 {{/authRequired}}
 {{#dmMultipath}}
-yum install -y device-mapper-multipath
+# Install device mapper multipathing packages (different package names for different distros)
+if command -v apt-get >/dev/null 2>&1; then
+    install_packages multipath-tools multipath-tools-boot
+else
+    install_packages device-mapper-multipath
+fi
 
 cat > /etc/multipath.conf << "EOF"
 blacklist {
