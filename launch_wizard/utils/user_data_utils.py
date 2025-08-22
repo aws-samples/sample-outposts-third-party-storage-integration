@@ -405,3 +405,53 @@ def process_guest_os_scripts_input(
         guest_os_scripts = process_guest_os_scripts(guest_os_script_paths)
 
     return guest_os_scripts
+
+
+def create_guest_os_script_entry(script_content: str, guest_os_type: OperationSystemType) -> Dict[str, str]:
+    """
+    Create a guest OS script entry for embedding in user data templates.
+
+    Args:
+        script_content: The script content to embed.
+        guest_os_type: The guest operating system type (linux or windows).
+
+    Returns:
+        A dictionary with 'type' and 'content' keys for template rendering.
+    """
+
+    # Right now the user data on both Linux and Windows has type text/x-shellscript
+    return {"type": "text/x-shellscript", "content": script_content}
+
+
+def integrate_data_volumes_into_guest_os_scripts(
+    existing_guest_os_scripts: Optional[List[Dict[str, str]]],
+    data_volumes_script: str,
+    guest_os_type: OperationSystemType,
+) -> List[Dict[str, str]]:
+    """
+    Integrate data volumes script into the guest OS scripts list.
+
+    This function extracts the script content from data volumes user data and
+    adds it to the existing guest OS scripts list for inclusion in sanboot/localboot
+    user data templates.
+
+    Args:
+        existing_guest_os_scripts: The existing list of guest OS scripts (optional).
+        data_volumes_script: The data volumes user data script.
+        guest_os_type: The guest operating system type (linux or windows).
+
+    Returns:
+        Updated list of guest OS scripts including the data volumes script.
+    """
+
+    # Start with existing scripts or empty list
+    guest_os_scripts = existing_guest_os_scripts or []
+
+    # Create guest OS script entry for the data volumes script
+    data_volumes_script_entry = create_guest_os_script_entry(data_volumes_script, guest_os_type)
+
+    # Add the data volumes script to the beginning of the list
+    # This ensures data volumes are attached before other user scripts run
+    guest_os_scripts.insert(0, data_volumes_script_entry)
+
+    return guest_os_scripts

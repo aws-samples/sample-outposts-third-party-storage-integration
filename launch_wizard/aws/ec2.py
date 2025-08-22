@@ -848,7 +848,8 @@ def launch_instance_helper_nvme(
     guest_os_scripts: Optional[List[Dict[str, str]]],
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
-) -> None:
+    should_return_user_data: Optional[bool],
+) -> Optional[str]:
     """
     Launch an EC2 instance configured for NVMe storage connectivity.
 
@@ -878,6 +879,7 @@ def launch_instance_helper_nvme(
         guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
         save_user_data_path: File path to save the generated user data script (optional).
         save_user_data_only: If True, only generate and save user data without launching instance (optional).
+        should_return_user_data: If True, return the user data instead of launching instance (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
@@ -893,7 +895,7 @@ def launch_instance_helper_nvme(
         guest_os_scripts=guest_os_scripts,
     )
 
-    launch_instance_helper(
+    return launch_instance_helper(
         ec2_client=ec2_client,
         outpost_hardware_type=outpost_hardware_type,
         ami_id=ami_id,
@@ -909,6 +911,7 @@ def launch_instance_helper_nvme(
         root_volume_type=root_volume_type,
         save_user_data_path=save_user_data_path,
         save_user_data_only=save_user_data_only,
+        should_return_user_data=should_return_user_data,
     )
 
 
@@ -933,7 +936,8 @@ def launch_instance_helper_iscsi(
     guest_os_scripts: Optional[List[Dict[str, str]]],
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
-) -> None:
+    should_return_user_data: Optional[bool],
+) -> Optional[str]:
     """
     Launch an EC2 instance configured for iSCSI storage connectivity.
 
@@ -963,6 +967,7 @@ def launch_instance_helper_iscsi(
         guest_os_scripts: List of additional guest OS scripts to include in user data (optional).
         save_user_data_path: File path to save the generated user data script (optional).
         save_user_data_only: If True, only generate and save user data without launching instance (optional).
+        should_return_user_data: If True, return the user data instead of launching instance (optional).
 
     Raises:
         typer.Exit: If the user cancels the operation or if the instance launch fails.
@@ -979,7 +984,7 @@ def launch_instance_helper_iscsi(
         guest_os_scripts=guest_os_scripts,
     )
 
-    launch_instance_helper(
+    return launch_instance_helper(
         ec2_client=ec2_client,
         outpost_hardware_type=outpost_hardware_type,
         ami_id=ami_id,
@@ -995,6 +1000,7 @@ def launch_instance_helper_iscsi(
         root_volume_type=root_volume_type,
         save_user_data_path=save_user_data_path,
         save_user_data_only=save_user_data_only,
+        should_return_user_data=should_return_user_data,
     )
 
 
@@ -1014,7 +1020,32 @@ def launch_instance_helper(
     root_volume_type: Optional[EBSVolumeType],
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
-) -> None:
+    should_return_user_data: Optional[bool] = False,
+) -> Optional[str]:
+    """
+    Helper function to either launch an instance or return user data.
+
+    Args:
+        ec2_client: The boto3 EC2 client for AWS API calls.
+        outpost_hardware_type: The type of Outpost hardware (RACK or SERVER).
+        ami_id: The AMI ID to launch the instance from.
+        instance_type: The EC2 instance type to launch.
+        subnet_id: The subnet ID where the instance will be launched.
+        key_name: The key pair name for SSH access (optional).
+        security_group_id: The security group ID to associate (optional).
+        instance_profile_name: The IAM instance profile name to attach (optional).
+        instance_name: The name to assign to the instance as a 'Name' tag (optional).
+        root_volume_device_name: The root volume device name for custom configuration (optional).
+        root_volume_size: The root volume size in GiB (optional).
+        root_volume_type: The root volume type (optional).
+        save_user_data_path: File path to save the generated user data script (optional).
+        save_user_data_only: If True, only generate and save user data without launching instance (optional).
+        should_return_user_data: If True, return the user data instead of launching instance.
+
+    Returns:
+        User data string if should_return_user_data is True, otherwise None.
+    """
+
     # Print out the generated user data script
     Console().print(Panel(user_data, title="User Data Script", style="cyan"))
 
@@ -1022,10 +1053,15 @@ def launch_instance_helper(
     if save_user_data_path:
         save_user_data_path_to_file(user_data, save_user_data_path)
 
+    # If should_return_user_data is True, return the user data without launching
+    if should_return_user_data:
+        Console().print("User data generation completed.")
+        return user_data
+
     # If save_user_data_only is True, skip instance launching
     if save_user_data_only:
         Console().print("User data generation completed. Skipping EC2 instance launch.")
-        return
+        return None
 
     if not auto_confirm("Would you like to proceed with launching the instance using the above user data script?"):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
@@ -1046,3 +1082,5 @@ def launch_instance_helper(
         root_volume_size=root_volume_size,
         root_volume_type=root_volume_type,
     )
+
+    return None

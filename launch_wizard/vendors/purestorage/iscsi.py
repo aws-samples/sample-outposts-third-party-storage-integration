@@ -14,7 +14,10 @@ from launch_wizard.utils.display_utils import print_table_with_multiple_columns,
 from launch_wizard.utils.network_utils import validate_ip, validate_ip_list
 from launch_wizard.utils.san_utils import generate_discovery_portals, generate_or_input_initiator_iqn
 from launch_wizard.utils.ui_utils import auto_confirm, error_and_exit
-from launch_wizard.utils.user_data_utils import process_guest_os_scripts_input
+from launch_wizard.utils.user_data_utils import (
+    integrate_data_volumes_into_guest_os_scripts,
+    process_guest_os_scripts_input,
+)
 from launch_wizard.utils.validation_utils import (
     assign_auth_secret_names_to_targets,
     assign_lun_to_targets,
@@ -23,6 +26,12 @@ from launch_wizard.utils.validation_utils import (
     validate_lun_for_feature,
     validate_storage_target_count,
 )
+from launch_wizard.utils.workflow_orchestrator import (
+    check_is_secondary_workflow,
+    prompt_for_data_volumes_configuration,
+    should_prompt_for_data_volumes_configuration,
+)
+from launch_wizard.vendors.purestorage.data_volumes_workflow import execute_data_volumes_workflow
 from launch_wizard.vendors.purestorage.iscsi_utils import (
     pure_create_iscsi_host,
     pure_get_iscsi_target_endpoints_and_iqns,
@@ -95,7 +104,7 @@ def iscsi(
             help="Path to additional guest OS script files to execute (only applicable for localboot and sanboot features)",
         ),
     ] = None,
-) -> None:
+) -> Optional[str]:
     """
     Configure and launch an EC2 instance with Pure Storage FlashArray iSCSI connectivity.
 
@@ -119,6 +128,9 @@ def iscsi(
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for target authentication (optional).
         discovery_portal_auth_secret_names_raw_input: List of AWS Secrets Manager secret names for discovery portal authentication (optional).
         lun: Logical Unit Number for SAN boot and LocalBoot features (optional, 0-255).
+
+    Returns:
+        The user data script on the data volumes workflow for SAN boot or LocalBoot.
 
     Raises:
         typer.Exit: If the feature is not supported, Pure Storage configuration fails, or the user cancels the operation.
@@ -197,7 +209,25 @@ def iscsi(
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)
     guest_os_scripts = process_guest_os_scripts_input(guest_os_script_paths, feature_name, guest_os_type)
 
-    launch_instance_helper_iscsi(
+    # Check if the user should be prompted for data volumes (for sanboot and localboot workflows)
+    if should_prompt_for_data_volumes_configuration(feature_name) and prompt_for_data_volumes_configuration():
+        # Execute the data volumes workflow
+        data_volumes_script = execute_data_volumes_workflow(
+            ctx=ctx,
+            default_protocol=StorageProtocol.ISCSI,
+            pure_management_ip=pure_management_ip,
+            pure_api_key=pure_api_key,
+        )
+
+        if data_volumes_script:
+            guest_os_scripts = integrate_data_volumes_into_guest_os_scripts(
+                guest_os_scripts, data_volumes_script, guest_os_type
+            )
+
+    # Check if this is a data volumes workflow that should return user data
+    should_return_user_data = check_is_secondary_workflow(ctx)
+
+    return launch_instance_helper_iscsi(
         feature_name=feature_name,
         guest_os_type=guest_os_type,
         ec2_client=aws_client.ec2,
@@ -218,4 +248,5 @@ def iscsi(
         guest_os_scripts=guest_os_scripts,
         save_user_data_path=ctx.obj["save_user_data_path"],
         save_user_data_only=ctx.obj["save_user_data_only"],
+        should_return_user_data=should_return_user_data,
     )
