@@ -55,7 +55,7 @@ def generate_or_input_host_nqn() -> str:
     if auto_confirm("No host NQN (NVMe Qualified Name) was provided. Would you like to generate one automatically?"):
         return generate_host_nqn()
     else:
-        return prompt_with_trim("Please enter a host NQN")
+        return prompt_with_trim("Please enter a host NQN", data_type=str)
 
 
 def generate_or_input_initiator_iqn() -> str:
@@ -71,7 +71,7 @@ def generate_or_input_initiator_iqn() -> str:
     ):
         return generate_initiator_iqn()
     else:
-        return prompt_with_trim("Please enter an initiator IQN")
+        return prompt_with_trim("Please enter an initiator IQN", data_type=str)
 
 
 def generate_discovery_portals(targets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

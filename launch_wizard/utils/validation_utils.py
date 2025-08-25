@@ -113,7 +113,7 @@ def validate_lun_for_feature(lun: Optional[int], feature_name: FeatureName) -> O
             if not auto_confirm(
                 "No LUN (Logical Unit Number) specified. Would you like to proceed with the default LUN 0?"
             ):
-                lun = prompt_with_trim("Please enter a LUN value", default=0)
+                lun = prompt_with_trim("Please enter a LUN value", data_type=int)
 
         if lun is not None:
             try:
@@ -220,11 +220,12 @@ def validate_auth_secret_names_for_targets(
         auth_secret_names = []
 
         for target in targets:
-            auth_secret_name = prompt_with_trim(
+            auth_secret_name_input = prompt_with_trim(
                 f"Please enter the authentication secret name for {target_type} {str(target)}. Press Enter if no authentication is required.",
                 default="",
+                show_default=False,
             )
-            auth_secret_names.append(auth_secret_name if auth_secret_name else None)
+            auth_secret_names.append(auth_secret_name_input if auth_secret_name_input else None)
 
     num_targets = len(targets)
     num_auth_secrets = len(auth_secret_names)

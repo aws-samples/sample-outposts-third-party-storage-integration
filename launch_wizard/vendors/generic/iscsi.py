@@ -121,12 +121,12 @@ def iscsi(
         Console().print("Enter target information one by one. Press Enter on an empty Target IQN when finished.")
         while allowed_storage_target_limit is None or len(target_iqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
-            target_iqn = prompt_with_trim("Target IQN", default="")
+            target_iqn = prompt_with_trim("Target IQN", default="", show_default=False)
             if target_iqn == "" and len(target_iqns) > 0:
                 break
             target_iqns.append(target_iqn)
 
-            target_endpoint = prompt_with_trim("Target endpoint (IP or IP:PORT)", default="")
+            target_endpoint = prompt_with_trim("Target endpoint (IP or IP:PORT)", default="", show_default=False)
             target_endpoints.append(target_endpoint)
         validate_ip_and_port_list(target_endpoints)
     elif len(target_iqns) != len(target_endpoints):

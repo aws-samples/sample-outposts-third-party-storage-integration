@@ -2,7 +2,7 @@
 User interface and interaction utility functions.
 """
 
-from typing import Any, Callable, NoReturn, Optional, Union
+from typing import Callable, NoReturn, Optional, Type, TypeVar, Union, cast
 
 import typer
 from rich.console import Console, Group, RenderableType
@@ -29,18 +29,21 @@ def auto_confirm(message: str) -> bool:
     return typer.confirm(message)
 
 
+T = TypeVar("T")
+
+
 def prompt_with_trim(
     text: str,
-    default: Optional[Any] = None,
+    default: Optional[T] = None,
     hide_input: bool = False,
     confirmation_prompt: Union[bool, str] = False,
-    prompt_type: Optional[Any] = None,
-    value_proc: Optional[Callable[[str], Any]] = None,
+    data_type: Optional[Type[T]] = None,
+    value_proc: Optional[Callable[[str], T]] = None,
     prompt_suffix: str = ": ",
     show_default: bool = True,
     err: bool = False,
     show_choices: bool = True,
-) -> Any:
+) -> T:
     """
     Prompt user for input with automatic whitespace trimming.
 
@@ -54,7 +57,7 @@ def prompt_with_trim(
         hide_input: If this is set to true then the input value will be hidden.
         confirmation_prompt: Prompt a second time to confirm the value. Can be set
             to a string instead of True to customize the message.
-        prompt_type: The type to convert the result to.
+        data_type: The type to convert the result to.
         value_proc: If this parameter is provided it's a function that is invoked
             instead of the type conversion to convert a value.
         prompt_suffix: A suffix that should be added to the prompt.
@@ -73,7 +76,7 @@ def prompt_with_trim(
         default=default,
         hide_input=hide_input,
         confirmation_prompt=confirmation_prompt,
-        type=prompt_type,
+        type=data_type,
         value_proc=value_proc,
         prompt_suffix=prompt_suffix,
         show_default=show_default,
@@ -81,8 +84,8 @@ def prompt_with_trim(
         show_choices=show_choices,
     )
     if isinstance(result, str):
-        return result.strip()
-    return result
+        result = result.strip()
+    return cast(T, result)
 
 
 def error_and_exit(*parts: RenderableType, code: int) -> NoReturn:

@@ -2,7 +2,7 @@
 AWS Outposts operations and helper functions.
 """
 
-from typing import List, Optional, cast
+from typing import List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -50,8 +50,7 @@ def validate_instance_type(
             "Available instance types for this Outpost", available_instance_types, column_name="Instance Type"
         )
 
-        instance_type = prompt_with_trim("Please enter an instance type")
-        instance_type = cast(str, instance_type)
+        instance_type = prompt_with_trim("Please enter an instance type", data_type=str)
 
     if instance_type not in available_instance_types:
         error_and_exit(

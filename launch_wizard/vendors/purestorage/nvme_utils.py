@@ -137,6 +137,7 @@ def pure_get_nvme_subsystem_endpoints_and_nqns(
                 subsystem_endpoint = prompt_with_trim(
                     "NVMe subsystem endpoint (IP address)",
                     default="",
+                    show_default=False,
                 )
                 if subsystem_endpoint == "":
                     break

@@ -5,7 +5,7 @@ This module handles the coordination of complex workflows that involve multiple 
 such as the sanboot/localboot workflows that optionally include data volumes configuration.
 """
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
 import typer
 from rich.console import Console
@@ -87,18 +87,13 @@ def prompt_for_storage_protocol(default_protocol: StorageProtocol) -> StoragePro
     )
 
     # Prompt for protocol selection
-    choice = cast(str, prompt_with_trim("Enter protocol", default=default_protocol.value, prompt_type=str))
+    selected_protocol = prompt_with_trim(
+        "Choose the protocol (or press Enter for default)",
+        default=default_protocol,
+        data_type=StorageProtocol,
+        show_default=False,
+    )
 
-    # Validate and return the selected protocol
-    if choice.casefold() == StorageProtocol.ISCSI.value.casefold():
-        selected_protocol = StorageProtocol.ISCSI
-    elif choice.casefold() == StorageProtocol.NVME.value.casefold():
-        selected_protocol = StorageProtocol.NVME
-    else:
-        Console().print(
-            style_var(f'Invalid choice "{choice}". Using default protocol: {default_protocol.value}', color="yellow")
-        )
-        selected_protocol = default_protocol
     return selected_protocol
 
 

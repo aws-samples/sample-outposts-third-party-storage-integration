@@ -51,7 +51,7 @@ def pure_get_volume_uuids(pure_client: flasharray.Client, volume_names: Optional
         print_table_with_multiple_columns("Available volumes", available_volumes)
         Console().print("Enter volume names one by one. Press Enter on an empty line when finished.")
         while True:
-            volume_name = prompt_with_trim("Volume name", default="")
+            volume_name = prompt_with_trim("Volume name", default="", show_default=False)
             if volume_name == "":
                 break
             volume_names.append(volume_name)
@@ -127,7 +127,9 @@ def pure_get_host_group_name(pure_client: flasharray.Client, host_group_name: Op
 
         print_table_with_multiple_columns("Available host groups", available_host_groups)
 
-        host_group_name = prompt_with_trim("Please enter an existing host group name or specify a new name")
+        host_group_name = prompt_with_trim(
+            "Please enter an existing host group name or specify a new name", data_type=str
+        )
 
         if host_group_name:
             Console().print(f"Using host group name: {style_var(host_group_name)}.")
@@ -180,7 +182,7 @@ def pure_get_host_name(pure_client: flasharray.Client, host_name: Optional[str])
 
         print_table_with_multiple_columns("Available hosts", available_hosts)
 
-        host_name = prompt_with_trim("Please enter an existing host name or specify a new name")
+        host_name = prompt_with_trim("Please enter an existing host name or specify a new name", data_type=str)
 
         if host_name:
             Console().print(f"Using host name: {style_var(host_name)}.")

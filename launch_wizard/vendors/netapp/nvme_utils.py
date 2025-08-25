@@ -65,7 +65,7 @@ def netapp_get_nvme_subsystems(nvme_subsystem_names: Optional[List[str]]) -> Lis
         print_table_with_multiple_columns("Available NVMe subsystems", available_nvme_subsystems)
         Console().print("Enter subsystem names one by one. Press Enter on an empty line when finished.")
         while True:
-            nvme_subsystem_name = prompt_with_trim("Subsystem name", default="")
+            nvme_subsystem_name = prompt_with_trim("Subsystem name", default="", show_default=False)
             if nvme_subsystem_name == "":
                 break
             nvme_subsystem_names.append(nvme_subsystem_name)
@@ -172,6 +172,7 @@ def netapp_get_nvme_interfaces(subsystem_endpoints: Optional[List[str]]) -> List
                 subsystem_endpoint = prompt_with_trim(
                     "Subsystem endpoint IP address",
                     default="",
+                    show_default=False,
                 )
                 if subsystem_endpoint == "":
                     break

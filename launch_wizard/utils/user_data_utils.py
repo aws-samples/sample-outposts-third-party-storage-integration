@@ -378,7 +378,9 @@ def process_guest_os_scripts_input(
 
         while True:
             script_path = prompt_with_trim(
-                f"Guest OS script file path {len(script_paths) + 1} (or press Enter to finish)", default=""
+                f"Guest OS script file path {len(script_paths) + 1} (or press Enter to finish)",
+                default="",
+                show_default=False,
             )
 
             if not script_path:

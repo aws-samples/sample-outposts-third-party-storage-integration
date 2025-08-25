@@ -102,7 +102,7 @@ def main_command(
     # Validate mutual exclusivity of options
     if save_user_data_only and not save_user_data_path:
         Console().print(f"{style_var('--save-user-data-only')} requires the user data file path to be specified.")
-        save_user_data_path = prompt_with_trim("Enter the file path to save user data")
+        save_user_data_path = prompt_with_trim("Enter the file path to save user data", data_type=str)
 
     # Create AWS client wrapper
     aws_client = AWSClient(region_name)

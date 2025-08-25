@@ -112,12 +112,12 @@ def nvme(
         Console().print("Enter subsystem information one by one. Press Enter on an empty Subsystem NQN when finished.")
         while allowed_storage_target_limit is None or len(subsystem_nqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
-            subsystem_nqn = prompt_with_trim("Subsystem NQN", default="")
+            subsystem_nqn = prompt_with_trim("Subsystem NQN", default="", show_default=False)
             if subsystem_nqn == "" and len(subsystem_nqns) > 0:
                 break
             subsystem_nqns.append(subsystem_nqn)
 
-            subsystem_endpoint = prompt_with_trim("Subsystem endpoint (IP or IP:PORT)", default="")
+            subsystem_endpoint = prompt_with_trim("Subsystem endpoint (IP or IP:PORT)", default="", show_default=False)
             subsystem_endpoints.append(subsystem_endpoint)
         validate_ip_and_port_list(subsystem_endpoints)
     elif len(subsystem_nqns) != len(subsystem_endpoints):

@@ -137,6 +137,7 @@ def pure_get_iscsi_target_endpoints_and_iqns(
                 target_endpoint = prompt_with_trim(
                     "iSCSI target endpoint (IP address)",
                     default="",
+                    show_default=False,
                 )
                 if target_endpoint == "":
                     break
