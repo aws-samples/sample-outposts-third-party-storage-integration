@@ -111,7 +111,8 @@ def validate_lun_for_feature(lun: Optional[int], feature_name: FeatureName) -> O
         if lun is None:
             # Prompt user to confirm proceeding without LUN
             if not auto_confirm(
-                "No LUN (Logical Unit Number) specified. Would you like to proceed with the default LUN 0?"
+                "No LUN (Logical Unit Number) specified. Would you like to proceed with the default LUN 0?",
+                default=True,
             ):
                 lun = prompt_with_trim("Please enter a LUN value", data_type=int)
 
@@ -205,8 +206,9 @@ def validate_auth_secret_names_for_targets(
 
     auth_secret_names = process_auth_secret_names(auth_secret_names_raw_input)
 
-    if not auth_secret_names and auto_confirm(
-        f"No authentication secrets specified for the {target_type}. Would you like to proceed without authentication?"
+    if not auth_secret_names and not auto_confirm(
+        f"No authentication secrets specified for the {target_type}. Would you like to use authentication?",
+        default=False,
     ):
         return [None] * len(targets)
 
@@ -288,13 +290,14 @@ def validate_enable_dm_multipath(enable_dm_multipath: Optional[bool]) -> bool:
     """
 
     if enable_dm_multipath is None:
-        if not auto_confirm(
-            "Device Mapper Multipath (DM Multipath) is not specified. Would you like to proceed without enabling it? (DM Multipath provides redundant paths to storage devices)"
+        if auto_confirm(
+            "Device Mapper Multipath (DM Multipath) is not specified. It can provide redundant paths to storage devices. Would you like to enable it?",
+            default=False,
         ):
             enable_dm_multipath = True
 
     if enable_dm_multipath:
-        Console().print("Device Mapper Multipath (DM Multipath) will be enabled for redundant storage paths.")
+        Console().print("Device Mapper Multipath (DM Multipath) will be enabled.")
         return True
     else:
         Console().print("Device Mapper Multipath (DM Multipath) will not be enabled.")

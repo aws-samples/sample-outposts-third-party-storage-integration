@@ -52,7 +52,9 @@ def generate_or_input_host_nqn() -> str:
         Either a user-provided NQN or a generated one.
     """
 
-    if auto_confirm("No host NQN (NVMe Qualified Name) was provided. Would you like to generate one automatically?"):
+    if auto_confirm(
+        "No host NQN (NVMe Qualified Name) was provided. Would you like to generate one automatically?", default=True
+    ):
         return generate_host_nqn()
     else:
         return prompt_with_trim("Please enter a host NQN", data_type=str)
@@ -67,7 +69,8 @@ def generate_or_input_initiator_iqn() -> str:
     """
 
     if auto_confirm(
-        "No initiator IQN (iSCSI Qualified Name) was provided. Would you like to generate one automatically?"
+        "No initiator IQN (iSCSI Qualified Name) was provided. Would you like to generate one automatically?",
+        default=True,
     ):
         return generate_initiator_iqn()
     else:

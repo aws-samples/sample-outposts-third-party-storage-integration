@@ -91,7 +91,7 @@ def netapp_get_nvme_subsystems(nvme_subsystem_names: Optional[List[str]]) -> Lis
 
     print_table_with_multiple_columns("Selected NVMe subsystems to be used", selected_nvme_subsystems)
 
-    if not auto_confirm("Would you like to proceed with these NVMe subsystems?"):
+    if not auto_confirm("Would you like to proceed with these NVMe subsystems?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     return selected_nvme_subsystems
@@ -163,7 +163,7 @@ def netapp_get_nvme_interfaces(subsystem_endpoints: Optional[List[str]]) -> List
 
     if not subsystem_endpoints:
         print_table_with_multiple_columns("Available NVMe interfaces", available_nvme_interfaces)
-        if auto_confirm("Would you like to use all the listed NVMe endpoints?"):
+        if auto_confirm("Would you like to use all the listed NVMe endpoints?", default=True):
             subsystem_endpoints = available_subsystem_endpoints
         else:
             subsystem_endpoints = []

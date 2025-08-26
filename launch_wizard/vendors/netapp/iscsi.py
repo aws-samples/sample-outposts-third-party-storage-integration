@@ -193,7 +193,7 @@ def iscsi(
 
     print_table_with_multiple_columns("iSCSI discovery portals to be used", portals)
 
-    if not auto_confirm("Would you like to proceed with launching the instance?"):
+    if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     # Process guest OS scripts if provided (only applicable for localboot and sanboot)

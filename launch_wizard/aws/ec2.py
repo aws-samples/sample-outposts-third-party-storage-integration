@@ -75,7 +75,7 @@ def validate_ami(ec2_client: boto3.client, ami_id: Optional[str]) -> str:
         Console().print(f"{style_var(ami_name)} ({style_var(ami_id)}) is a verified AMI.")
     else:
         Console().print(f"{style_var(ami_name)} ({style_var(ami_id)}) is not a verified AMI.")
-        if not auto_confirm("Do you want to continue with this unverified AMI?"):
+        if not auto_confirm("Do you want to continue with this unverified AMI?", default=True):
             error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     return ami_id
@@ -147,7 +147,8 @@ def validate_network(ec2_client: boto3.client, subnet_id: str, outpost_hardware_
 
             if "EnableLniAtDeviceIndex" not in subnet or int(subnet["EnableLniAtDeviceIndex"]) != 1:
                 if auto_confirm(
-                    "This tool requires the subnet to have Local Network Interface (LNI) configured at device index 1. Would you like to update the subnet configuration?"
+                    "This tool requires the subnet to have Local Network Interface (LNI) configured at device index 1. Would you like to update the subnet configuration?",
+                    default=True,
                 ):
                     # Enable LNI at the specified device index
                     ec2_client.modify_subnet_attribute(SubnetId=subnet_id, EnableLniAtDeviceIndex=1)
@@ -186,8 +187,9 @@ def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) ->
         typer.Exit: If the key pair is not found in the account or if an AWS error occurs.
     """
 
-    if not key_pair_name and auto_confirm(
-        "No key pair name specified. Would you like to proceed without a key pair? (This will limit your ability to connect to the instance)"
+    if not key_pair_name and not auto_confirm(
+        "No key pair name specified. Would you like to use a key pair to allow SSH access to the instance?",
+        default=False,
     ):
         return None
 
@@ -227,7 +229,7 @@ def validate_security_group(ec2_client: boto3.client, security_group_id: Optiona
     """
 
     if not security_group_id and auto_confirm(
-        "No security group specified. Would you like to use the default security group in the VPC?"
+        "No security group specified. Would you like to use the default security group in the VPC?", default=True
     ):
         return None
 
@@ -268,8 +270,9 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
         typer.Exit: If the instance profile is not found in the account or if an AWS error occurs.
     """
 
-    if not instance_profile_name and auto_confirm(
-        "No instance profile specified. Would you like to proceed without an instance profile? (This will limit the instance's ability to access AWS services)"
+    if not instance_profile_name and not auto_confirm(
+        "No instance profile specified. Would you like to use an instance profile to allow the instance to access AWS services?",
+        default=False,
     ):
         return None
 
@@ -307,7 +310,7 @@ def validate_instance_name(instance_name: Optional[str]) -> Optional[str]:
     """
 
     if not instance_name:
-        if auto_confirm("No instance name specified. Would you like to proceed without naming the instance?"):
+        if not auto_confirm("No instance name specified. Would you like to name the instance?", default=False):
             return None
 
         instance_name = prompt_with_trim("Please enter an instance name", data_type=str)
@@ -367,7 +370,8 @@ def validate_root_volume_options(
     # If neither option is specified, return early with None values
     if not root_volume_size and not root_volume_type:
         if auto_confirm(
-            "No root volume size or type specified. Would you like to use the default configuration from the selected AMI?"
+            "No root volume size or type specified. Would you like to use the default configuration from the selected AMI?",
+            default=True,
         ):
             return None, None, None
 
@@ -375,7 +379,7 @@ def validate_root_volume_options(
     if not root_volume_size:
         size_prompt = f"Would you like to use the default root volume size ({default_volume_size} GiB)?"
 
-        if not auto_confirm(size_prompt):
+        if not auto_confirm(size_prompt, default=True):
             while True:
                 try:
                     root_volume_size = prompt_with_trim(
@@ -406,7 +410,7 @@ def validate_root_volume_options(
         else:
             type_prompt = "Would you like to use the default root volume type?"
 
-        if not auto_confirm(type_prompt):
+        if not auto_confirm(type_prompt, default=True):
             available_volume_types = [volume_type.value for volume_type in EBSVolumeType]
             print_table_with_single_column(
                 "Available EBS volume types", available_volume_types, column_name="Volume Type"
@@ -1052,7 +1056,9 @@ def launch_instance_helper(
         Console().print("User data generation completed. Skipping EC2 instance launch.")
         return None
 
-    if not auto_confirm("Would you like to proceed with launching the instance using the above user data script?"):
+    if not auto_confirm(
+        "Would you like to proceed with launching the instance using the above user data script?", default=True
+    ):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     # Launch the instance

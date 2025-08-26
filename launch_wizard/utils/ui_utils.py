@@ -12,21 +12,22 @@ from rich.text import Text
 from launch_wizard.common.config import global_config
 
 
-def auto_confirm(message: str) -> bool:
+def auto_confirm(message: str, default: bool = False) -> bool:
     """
     Auto-confirm a message if assume_yes is set, otherwise prompt the user.
 
     Args:
         message: The confirmation message to display.
+        default: The default value to return when assume_yes is True.
 
     Returns:
-        True if confirmed, False otherwise.
+        The default value if assume_yes is True, otherwise the user's confirmation.
     """
 
     if global_config.assume_yes:
-        typer.echo(f"{message} [auto-yes]")
-        return True
-    return typer.confirm(message)
+        typer.echo(f'{message} [auto-{"yes" if default else "no"}]')
+        return default
+    return typer.confirm(message, default=default)
 
 
 T = TypeVar("T")

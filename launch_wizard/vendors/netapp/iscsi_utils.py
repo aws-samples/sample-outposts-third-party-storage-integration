@@ -180,7 +180,7 @@ def netapp_create_igroup(svm_name: str, igroup_name: Optional[str], os_type: Ope
         return igroup_name
 
     Console().print(f"Initiator group {style_var(igroup_name)} doesn't exist.")
-    if not auto_confirm(f"Would you like to create initiator group {style_var(igroup_name)}?"):
+    if not auto_confirm(f"Would you like to create initiator group {style_var(igroup_name)}?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     try:
@@ -413,7 +413,7 @@ def netapp_get_target_endpoints(svm_name: str, target_endpoints: Optional[List[s
 
     if not target_endpoints:
         print_table_with_multiple_columns("Available iSCSI interfaces", available_iscsi_interfaces)
-        if auto_confirm("Would you like to use all the listed iSCSI endpoints?"):
+        if auto_confirm("Would you like to use all the listed iSCSI endpoints?", default=True):
             target_endpoints = available_target_endpoints
         else:
             target_endpoints = []

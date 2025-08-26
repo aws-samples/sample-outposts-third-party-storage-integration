@@ -199,7 +199,7 @@ The Launch Wizard uses an interactive approach by default. The following common 
 - `--key-name`: Key pair name for SSH access
 - `--save-user-data-path`: Path to save the generated user data script to a local file
 - `--save-user-data-only`: Generate and save user data only, without launching an EC2 instance
-- `--assume-yes`: Automatically answer yes to all prompts
+- `--assume-yes`: Automatically use default answers for all prompts
 
 For a complete list of common options, you can use:
 

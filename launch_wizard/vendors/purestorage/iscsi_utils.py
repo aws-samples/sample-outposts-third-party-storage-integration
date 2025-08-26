@@ -128,7 +128,7 @@ def pure_get_iscsi_target_endpoints_and_iqns(
         print_table_with_multiple_columns(
             "Available iSCSI target endpoints and IQNs", available_iscsi_target_endpoints_and_iqns
         )
-        if auto_confirm("Would you like to use all the listed iSCSI targets?"):
+        if auto_confirm("Would you like to use all the listed iSCSI targets?", default=True):
             return available_iscsi_target_endpoints_and_iqns
         else:
             target_endpoints = []

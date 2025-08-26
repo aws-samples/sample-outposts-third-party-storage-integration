@@ -68,7 +68,7 @@ def main_command(
         typer.Option(help="Generate and save user data only, without launching an EC2 instance"),
     ] = False,
     assume_yes: Annotated[
-        bool, typer.Option("--assume-yes", "-y", help="Automatically answer yes to all prompts")
+        bool, typer.Option("--assume-yes", "-y", help="Automatically use default answers for all prompts")
     ] = False,
 ) -> None:
     """
@@ -94,7 +94,7 @@ def main_command(
         root_volume_type: Type of the root volume to attach (optional).
         save_user_data_path: Path to save the generated user data script to a local file (optional).
         save_user_data_only: Generate and save user data only, without launching an EC2 instance (optional).
-        assume_yes: Automatically answer yes to all prompts (optional).
+        assume_yes: Automatically use default answers for all prompts (optional).
     """
 
     global_config.assume_yes = assume_yes

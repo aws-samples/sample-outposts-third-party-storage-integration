@@ -47,7 +47,7 @@ def prompt_for_data_volumes_configuration() -> bool:
         "You can optionally configure additional data volumes that will be attached to your instance after the boot process completes."
     )
 
-    return auto_confirm("Would you like to configure additional data volumes?")
+    return auto_confirm("Would you like to configure additional data volumes?", default=False)
 
 
 def check_is_secondary_workflow(ctx: typer.Context) -> bool:

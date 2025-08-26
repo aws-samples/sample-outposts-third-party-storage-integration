@@ -369,7 +369,7 @@ def process_guest_os_scripts_input(
             f"No guest OS scripts specified. Guest OS scripts can be used to customize the guest OS configuration after {style_var('LocalBoot')} or {style_var('SAN boot')}."
         )
 
-        if auto_confirm("Would you like to proceed without specifying guest OS scripts?"):
+        if not auto_confirm("Would you like to add guest OS scripts?", default=False):
             return guest_os_scripts
 
         # User wants to specify scripts, prompt for them
@@ -395,7 +395,7 @@ def process_guest_os_scripts_input(
             Console().print(f"Added script: {style_var(script_path)}")
 
         if not script_paths:
-            if auto_confirm("No scripts were specified. Would you like to proceed without guest OS scripts?"):
+            if auto_confirm("No scripts were specified. Would you like to proceed?", default=True):
                 return guest_os_scripts
             else:
                 error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

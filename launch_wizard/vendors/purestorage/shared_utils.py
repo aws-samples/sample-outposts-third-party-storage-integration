@@ -75,7 +75,7 @@ def pure_get_volume_uuids(pure_client: flasharray.Client, volume_names: Optional
 
     print_table_with_multiple_columns("Selected volumes to be used", selected_volumes)
 
-    if not auto_confirm("Would you like to proceed with these volumes?"):
+    if not auto_confirm("Would you like to proceed with these volumes?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     selected_volume_uuids = [volume["uuid"] for volume in selected_volumes]
@@ -103,7 +103,7 @@ def pure_get_host_group_name(pure_client: flasharray.Client, host_group_name: Op
     """
 
     if not host_group_name:
-        if auto_confirm("No host group name specified. Would you like to proceed without using a host group?"):
+        if not auto_confirm("No host group name specified. Would you like to use a host group?", default=False):
             return None
 
         available_host_groups = []

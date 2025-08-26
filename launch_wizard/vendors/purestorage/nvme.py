@@ -179,7 +179,7 @@ def nvme(
     assign_auth_secret_names_to_targets(subsystems, auth_secret_names)
 
     print_table_with_multiple_columns("NVMe subsystems to be used", subsystems)
-    if not auto_confirm("Would you like to proceed with launching the instance?"):
+    if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
     enable_dm_multipath = validate_enable_dm_multipath(enable_dm_multipath)

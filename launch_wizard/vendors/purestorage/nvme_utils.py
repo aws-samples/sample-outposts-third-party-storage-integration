@@ -128,7 +128,7 @@ def pure_get_nvme_subsystem_endpoints_and_nqns(
         print_table_with_multiple_columns(
             "Available NVMe subsystem endpoints and NQNs", available_nvme_subsystem_endpoints_and_nqns
         )
-        if auto_confirm("Would you like to use all the listed NVMe subsystems?"):
+        if auto_confirm("Would you like to use all the listed NVMe subsystems?", default=True):
             return available_nvme_subsystem_endpoints_and_nqns
         else:
             subsystem_endpoints = []
