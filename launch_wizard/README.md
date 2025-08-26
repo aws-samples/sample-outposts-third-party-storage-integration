@@ -8,6 +8,7 @@ The Launch Wizard provides a Python-based solution for launching EC2 instances o
 - **Multi-protocol Support**: iSCSI and NVMe connectivity options
 - **OS Support**: Both Linux and Windows guest operating systems
 - **Storage Features**: Data volumes, LocalBoot, and SAN boot configurations
+- **Secondary Data Volumes Workflow**: Optional post-boot data volume configuration for SAN boot and LocalBoot
 - **Interactive CLI**: Guided experience with validation at each step
 - **User Data Generation**: Generate and save user data scripts without launching instances
 - **AWS Integration**: Native AWS SDK integration with proper error handling
@@ -167,6 +168,81 @@ python -m launch_wizard [COMMON OPTIONS (optional)] [VENDOR] [PROTOCOL] [VENDOR-
 - NetApp: `iscsi`, `nvme`
 - Pure Storage: `iscsi`, `nvme`
 - Generic: `iscsi`, `nvme`
+
+### Data Volumes Configuration
+
+The Launch Wizard supports an optional **secondary data volumes workflow** that allows you to configure additional storage volumes after completing SAN boot (`sanboot`) or LocalBoot (`localboot`) operations.
+
+#### How It Works
+
+1. **Primary Workflow Completion**: After completing a SAN boot or LocalBoot workflow, the system will prompt you with an option to configure additional data volumes
+2. **Protocol Selection**: You can choose between iSCSI or NVMe protocols for the data volumes (independent of the primary storage protocol)
+3. **Vendor Configuration**: Configure storage array settings using the same vendor as your primary workflow
+4. **Integrated User Data**: The data volume configuration scripts are automatically integrated into the primary instance's user data, ensuring data volumes are properly attached during the boot process
+
+#### User Experience
+
+When completing a SAN boot or LocalBoot workflow:
+
+```
+Data Volumes Configuration
+You can optionally configure additional data volumes that will be attached to your instance after the boot process completes.
+
+Would you like to configure additional data volumes? [y/N]: y
+
+Please choose the storage protocol for your data volumes:
+  iscsi - iSCSI protocol (default)
+  nvme - NVMe over TCP protocol
+
+Choose the protocol (or press Enter for default): nvme
+```
+
+#### Benefits
+
+- **Single Workflow**: Complete both boot and data volume configuration in one streamlined process
+- **Protocol Flexibility**: Use different protocols for boot volumes and data volumes if desired
+- **Automatic Integration**: No manual steps required to attach data volumes after instance launch
+- **Vendor Consistency**: Works with all supported storage vendors (NetApp, Pure Storage, and generic)
+
+#### Automation Considerations
+
+**Important**: The secondary data volumes workflow currently **only supports interactive mode**. This means it requires user input during execution and cannot be fully automated with the `--assume-yes` flag.
+
+**For Full Automation**, you need to use a two-step approach:
+
+1. **Generate Data Volumes User Data**: First, run the data volumes workflow separately and save the user data to a file:
+    ```bash
+    # Step 1: Generate data volumes user data
+    python -m launch_wizard \
+        --feature-name data_volumes \
+        --guest-os-type linux \
+        --save-user-data-path /tmp/data-volumes-userdata.sh \
+        --save-user-data-only \
+        --assume-yes \
+        netapp nvme \
+        --netapp-management-ip 10.0.0.10 \
+        --netapp-username admin \
+        --netapp-password "SecurePassword123"
+    ```
+2. **Run Primary Workflow with Data Volumes Script**: Then, run the `sanboot` or `localboot` workflow and specify the data volumes script:
+    ```bash
+    # Step 2: Run sanboot/localboot with data volumes script
+    python -m launch_wizard \
+        --feature-name sanboot \
+        --guest-os-type linux \
+        --region us-west-2 \
+        --ami-id ami-0123456789abcdef0 \
+        --subnet-id subnet-0123456789abcdef0 \
+        --instance-type m5.large \
+        --assume-yes \
+        netapp nvme \
+        --netapp-management-ip 10.0.0.10 \
+        --netapp-username admin \
+        --netapp-password "SecurePassword123" \
+        --guest-os-script /tmp/data-volumes-userdata.sh
+    ```
+
+This approach allows you to achieve the same result as the integrated workflow while maintaining full automation compatibility.
 
 ### Examples
 
@@ -406,8 +482,9 @@ The Launch Wizard is organized into the following modules:
 2. **AWS Resource Validation**: Validate AMI, subnet, instance type, etc.
 3. **Storage Configuration**: Configure storage array settings based on vendor
 4. **User Data Generation**: Generate appropriate user data script based on vendor, protocol, and OS
-5. **Instance Launch**: Launch EC2 instance with the generated user data
-6. **Status Reporting**: Report instance launch status and connection information
+5. **Data Volumes Workflow** (optional): For SAN boot and LocalBoot features, prompt for optional data volumes configuration and integrate into user data
+6. **Instance Launch**: Launch EC2 instance with the generated user data (including data volumes if configured)
+7. **Status Reporting**: Report instance launch status and connection information
 
 ## Customization
 
