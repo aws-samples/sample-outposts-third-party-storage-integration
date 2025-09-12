@@ -28,6 +28,13 @@ Content-Type: text/ipxe; charset="utf-8"
 
 #!ipxe
 
+set initiator-iqn {{initiatorIQN}}
+
+{{#targets}}
+{{#authSecretName}}
+aws_get_boot_creds_from_secret {{.}}
+{{/authSecretName}}
+
 {{#isOutpostServer}}
 ifclose
 ifopen net{{lniIndex}}
@@ -35,13 +42,6 @@ dhcp --timeout 5000 net{{lniIndex}}
 route ||
 ifstat ||
 {{/isOutpostServer}}
-
-set initiator-iqn {{initiatorIQN}}
-
-{{#targets}}
-{{#authSecretName}}
-aws_get_boot_creds_from_secret {{.}}
-{{/authSecretName}}
 
 sanboot iscsi:{{ip}}::{{port}}:{{lun}}:{{iqn}}
 {{/targets}}
