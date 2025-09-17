@@ -70,6 +70,9 @@ def main_command(
     assume_yes: Annotated[
         bool, typer.Option("--assume-yes", "-y", help="Automatically use default answers for all prompts")
     ] = False,
+    disable_imdsv2: Annotated[
+        bool, typer.Option("--disable-imdsv2", help="Disable IMDSv2 (Instance Metadata Service v2) enforcement for launched instances")
+    ] = False,
 ) -> None:
     """
     Launch EC2 instances with external storage arrays on AWS Outposts.
@@ -95,6 +98,7 @@ def main_command(
         save_user_data_path: Path to save the generated user data script to a local file (optional).
         save_user_data_only: Generate and save user data only, without launching an EC2 instance (optional).
         assume_yes: Automatically use default answers for all prompts (optional).
+        disable_imdsv2: Disable IMDSv2 (Instance Metadata Service v2) enforcement for launched instances (optional).
     """
 
     global_config.assume_yes = assume_yes
@@ -159,5 +163,6 @@ def main_command(
             "root_volume_type": root_volume_type,
             "save_user_data_path": save_user_data_path,
             "save_user_data_only": save_user_data_only,
+            "disable_imdsv2": disable_imdsv2,
         }
     )

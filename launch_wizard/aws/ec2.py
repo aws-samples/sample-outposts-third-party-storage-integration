@@ -716,6 +716,7 @@ def launch_instance(
     root_volume_device_name: Optional[str] = None,
     root_volume_size: Optional[int] = None,
     root_volume_type: Optional[EBSVolumeType] = None,
+    disable_imdsv2: bool = False,
 ) -> None:
     """
     Launch an EC2 instance on AWS Outpost with the specified configuration.
@@ -738,6 +739,7 @@ def launch_instance(
         root_volume_device_name: The root volume device name for custom configuration (optional).
         root_volume_size: The root volume size in GiB (optional).
         root_volume_type: The root volume type (optional).
+        disable_imdsv2: Whether to disable IMDSv2 enforcement (optional, default False enables IMDSv2).
 
     Raises:
         typer.Exit: If the instance launch fails or if an AWS error occurs.
@@ -806,6 +808,15 @@ def launch_instance(
                 {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": instance_name}]}
             ]
 
+        # Configure Instance Metadata Service (IMDS) settings
+        if not disable_imdsv2:
+            # Enable IMDSv2 (Instance Metadata Service v2) for enhanced security
+            instance_params["MetadataOptions"] = {
+                "HttpTokens": "required",  # Require session tokens (IMDSv2)
+                "HttpPutResponseHopLimit": 1,  # Limit metadata service to single hop
+                "HttpEndpoint": "enabled"  # Enable metadata service endpoint
+            }
+
         Console().print("Launching the EC2 instance...")
         # Launch the instance
         run_instances_response = ec2_client.run_instances(**instance_params)
@@ -842,6 +853,7 @@ def launch_instance_helper_nvme(
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
     should_return_user_data: Optional[bool],
+    disable_imdsv2: bool = False,
 ) -> Optional[str]:
     """
     Launch an EC2 instance configured for NVMe storage connectivity.
@@ -905,6 +917,7 @@ def launch_instance_helper_nvme(
         save_user_data_path=save_user_data_path,
         save_user_data_only=save_user_data_only,
         should_return_user_data=should_return_user_data,
+        disable_imdsv2=disable_imdsv2,
     )
 
 
@@ -930,6 +943,7 @@ def launch_instance_helper_iscsi(
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
     should_return_user_data: Optional[bool],
+    disable_imdsv2: bool = False,
 ) -> Optional[str]:
     """
     Launch an EC2 instance configured for iSCSI storage connectivity.
@@ -994,6 +1008,7 @@ def launch_instance_helper_iscsi(
         save_user_data_path=save_user_data_path,
         save_user_data_only=save_user_data_only,
         should_return_user_data=should_return_user_data,
+        disable_imdsv2=disable_imdsv2,
     )
 
 
@@ -1014,6 +1029,7 @@ def launch_instance_helper(
     save_user_data_path: Optional[str],
     save_user_data_only: Optional[bool],
     should_return_user_data: Optional[bool] = False,
+    disable_imdsv2: bool = False,
 ) -> Optional[str]:
     """
     Helper function to either launch an instance or return user data.
@@ -1076,6 +1092,7 @@ def launch_instance_helper(
         root_volume_device_name=root_volume_device_name,
         root_volume_size=root_volume_size,
         root_volume_type=root_volume_type,
+        disable_imdsv2=disable_imdsv2,
     )
 
     return None

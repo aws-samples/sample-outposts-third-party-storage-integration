@@ -227,4 +227,5 @@ def nvme(
         save_user_data_path=ctx.obj["save_user_data_path"],
         save_user_data_only=ctx.obj["save_user_data_only"],
         should_return_user_data=should_return_user_data,
+        disable_imdsv2=ctx.obj["disable_imdsv2"],
     )
