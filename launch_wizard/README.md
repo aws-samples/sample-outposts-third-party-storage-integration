@@ -276,6 +276,7 @@ The Launch Wizard uses an interactive approach by default. The following common 
 - `--save-user-data-path`: Path to save the generated user data script to a local file
 - `--save-user-data-only`: Generate and save user data only, without launching an EC2 instance
 - `--assume-yes`: Automatically use default answers for all prompts
+- `--disable-imdsv2`: Disable IMDSv2 (Instance Metadata Service v2) enforcement for launched instances
 
 For a complete list of common options, you can use:
 
@@ -526,6 +527,21 @@ python -m launch_wizard [VENDOR] [PROTOCOL]
 - Use IAM roles with least privilege
 - Ensure proper network security groups and firewall rules
 - Regularly rotate credentials and audit access
+
+### Instance Metadata Service (IMDSv2)
+
+By default, the Launch Wizard enables **IMDSv2** (Instance Metadata Service version 2) for enhanced security on all launched instances. IMDSv2 requires session tokens for metadata requests, which helps protect against Server-Side Request Forgery (SSRF) attacks and unauthorized metadata access.
+
+**Default Behavior**: IMDSv2 is automatically enabled for all instances unless explicitly disabled.
+
+**Disabling IMDSv2**: In cases where you need to disable IMDSv2 (for example, when using legacy applications that only support IMDSv1), you can use the `--disable-imdsv2` flag:
+
+```bash
+# Example: Launch with IMDSv2 disabled
+python -m launch_wizard --disable-imdsv2 netapp nvme
+```
+
+**Security Recommendation**: AWS strongly recommends using IMDSv2 for enhanced security. Only disable IMDSv2 if absolutely necessary for application compatibility.
 
 ## Disclaimer
 
