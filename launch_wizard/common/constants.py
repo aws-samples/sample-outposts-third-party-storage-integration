@@ -25,6 +25,9 @@ AWS_DEFAULT_REGION = "us-west-2"
 AWS_IQN_PREFIX = "iqn.2006-03.com.amazon.aws"
 AWS_NQN_PREFIX = "nqn.2014-08.org.nvmexpress:uuid"
 
+DELL_ISCSI_SERVICE_NAME = "Storage_Iscsi_Target"
+DELL_NVME_TCP_SERVICE_NAME = "Storage_NVMe_TCP_Port"
+
 NETAPP_ISCSI_PROTOCOL_NAME = "iscsi"
 NETAPP_NVME_TCP_PROTOCOL_NAME = "nvme_tcp"
 NETAPP_MIXED_PROTOCOL_NAME = "mixed"

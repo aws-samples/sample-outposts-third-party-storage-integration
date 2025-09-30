@@ -1,6 +1,6 @@
 # Outposts Third-Party Storage Integration Public Samples
 
-This repository provides a collection of tools and utilities for integrating EC2 instances with external storage solutions, particularly focused on AWS Outposts deployments. These samples demonstrate best practices for connecting EC2 instances to various external storage arrays including NetApp, Pure Storage, and generic storage providers.
+This repository provides a collection of tools and utilities for integrating EC2 instances with external storage solutions, particularly focused on AWS Outposts deployments. These samples demonstrate best practices for connecting EC2 instances to various external storage arrays including Dell, HPE, NetApp, Pure Storage, and generic storage providers.
 
 ## Tools Overview
 

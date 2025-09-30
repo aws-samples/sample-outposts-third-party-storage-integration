@@ -4,7 +4,7 @@ The Launch Wizard provides a Python-based solution for launching EC2 instances o
 
 ## Features
 
-- **Multi-vendor Support**: NetApp, Pure Storage, and generic storage providers
+- **Multi-vendor Support**: Dell, HPE, NetApp, Pure Storage, and generic storage providers
 - **Multi-protocol Support**: iSCSI and NVMe connectivity options
 - **OS Support**: Both Linux and Windows guest operating systems
 - **Storage Features**: Data volumes, LocalBoot, and SAN boot configurations
@@ -24,7 +24,7 @@ The Launch Wizard provides a Python-based solution for launching EC2 instances o
 
 ### Storage Array Requirements
 
-- NetApp or Pure Storage storage array accessible from your Outpost
+- Dell, HPE, NetApp, or Pure Storage storage array accessible from your Outpost
 - Storage array credentials (stored in AWS Secrets Manager or provided during execution)
 - Network connectivity between your Outpost and storage arrays
 
@@ -165,9 +165,41 @@ python -m launch_wizard [COMMON OPTIONS (optional)] [VENDOR] [PROTOCOL] [VENDOR-
 
 ### Supported Vendors and Protocols
 
+- Dell: `iscsi`, `nvme`
+- HPE: `iscsi`, `nvme`
 - NetApp: `iscsi`, `nvme`
 - Pure Storage: `iscsi`, `nvme`
 - Generic: `iscsi`, `nvme`
+
+### Vendor SDK Compatibility
+
+This CLI tool leverages vendor-specific Python SDKs to interact with storage arrays. The compatibility of the tool extends to any device models supported by these underlying libraries:
+
+#### Dell
+
+- **Library**: [`PyPowerStore`](https://github.com/dell/python-powerstore)
+- **Supported Devices**: Dell PowerStore systems
+- **Validated Devices**: Dell PowerStore 5200T
+
+#### HPE
+
+- **Library**: [`python-3parclient`](https://github.com/hpe-storage/python-3parclient)
+- **Supported Devices**: HPE Alletra Storage MP, Alletra Storage 9000, Primera, and 3PAR systems
+- **Validated Devices**: HPE Alletra Storage MP
+
+#### NetApp
+
+- **Library**: [`netapp-ontap`](https://github.com/NetApp/ontap-rest-python)
+- **Supported Devices**: Any ONTAP-based storage systems
+- **Validated Devices**: NetApp AFF A70, AFF A250
+
+#### Pure Storage
+
+- **Library**: [`py-pure-client`](https://github.com/PureStorage-OpenConnect/py-pure-client) (`flasharray` submodule)
+- **Supported Devices**: Pure Storage FlashArray systems
+- **Validated Devices**: Pure Storage FlashArray//X20
+
+> **Note**: While the tool should be compatible with any device models supported by the respective vendor SDKs, the devices listed above have been specifically validated during development.
 
 ### Data Volumes Configuration
 
@@ -202,7 +234,7 @@ Choose the protocol (or press Enter for default): nvme
 - **Single Workflow**: Complete both boot and data volume configuration in one streamlined process
 - **Protocol Flexibility**: Use different protocols for boot volumes and data volumes if desired
 - **Automatic Integration**: No manual steps required to attach data volumes after instance launch
-- **Vendor Consistency**: Works with all supported storage vendors (NetApp, Pure Storage, and generic)
+- **Vendor Consistency**: Works with all supported storage vendors (Dell, HPE, NetApp, Pure Storage, and generic)
 
 #### Automation Considerations
 
@@ -248,6 +280,13 @@ This approach allows you to achieve the same result as the integrated workflow w
 
 ```bash
 # Basic examples (interactive mode)
+
+# Launch an EC2 instance with Dell NVMe storage
+python -m launch_wizard dell nvme
+
+# Launch an EC2 instance with HPE iSCSI storage
+python -m launch_wizard hpe iscsi
+
 # Launch an EC2 instance with NetApp NVMe storage
 python -m launch_wizard netapp nvme
 
@@ -393,6 +432,18 @@ All vendor subcommands support the following option:
 
 - `--guest-os-script`: Path to additional guest OS script files to execute
 
+#### Dell Options
+
+- `--dell-management-ip`: Management IP address of the Dell storage array
+- `--dell-username`: Username for Dell storage array authentication
+- `--dell-password`: Password for Dell storage array authentication
+
+#### HPE Options
+
+- `--hpe-management-ip`: Management IP address of the HPE storage array
+- `--hpe-username`: Username for HPE storage array authentication
+- `--hpe-password`: Password for HPE storage array authentication
+
 #### NetApp Options
 
 - `--netapp-management-ip`: Management IP address of the NetApp storage array
@@ -408,9 +459,11 @@ For a complete list of vendor-specific options, you can:
 
 - Use the `--help` option with the specific vendor and protocol subcommand. For example:
     ```bash
-    python -m launch_wizard netapp nvme --help
-    python -m launch_wizard purestorage iscsi --help
-    python -m launch_wizard generic nvme --help
+    python -m launch_wizard dell iscsi --help
+    python -m launch_wizard hpe nvme --help
+    python -m launch_wizard netapp iscsi --help
+    python -m launch_wizard purestorage nvme --help
+    python -m launch_wizard generic iscsi --help
     ```
 - Examine the source code for each vendor module in the respective directories
 
@@ -471,7 +524,7 @@ This approach is ideal for scripting and CI/CD pipelines where human interaction
 
 The Launch Wizard is organized into the following modules:
 
-- **Vendor-specific modules**: `netapp`, `purestorage`, `generic`
+- **Vendor-specific modules**: `dell`, `hpe`, `netapp`, `purestorage`, `generic`
 - **Utilities**: Common utilities for AWS interactions, validation, and user data generation
 - **User data templates**: Templates for generating instance user data scripts
 - **EC2 Helper**: Functions for validating and launching EC2 instances
