@@ -128,6 +128,7 @@ def iscsi(
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for target authentication (optional).
         discovery_portal_auth_secret_names_raw_input: List of AWS Secrets Manager secret names for discovery portal authentication (optional).
         lun: Logical Unit Number for SAN boot and LocalBoot features (optional, 0-255).
+        guest_os_script_paths: List of paths to additional guest OS script files to execute (optional).
 
     Returns:
         The user data script on the data volumes workflow for SAN boot or LocalBoot.
@@ -140,9 +141,12 @@ def iscsi(
     guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
     aws_client: AWSClient = ctx.obj["aws_client"]
 
+    Console().print(f"Starting the Pure Storage iSCSI workflow for {style_var(feature_name.value)}...")
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.ISCSI)
 
     # Establish a connection to the Pure Storage FlashArray
+    Console().print(f"Connecting to the Pure Storage storage device at {style_var(pure_management_ip)}...")
     pure_client = flasharray.Client(target=pure_management_ip, api_token=pure_api_key)
 
     # Get the volume UUIDs from the names
@@ -155,7 +159,7 @@ def iscsi(
     # If there is no initiator IQN, generate one or get user input
     if not initiator_iqn:
         initiator_iqn = generate_or_input_initiator_iqn()
-    Console().print(f"Using initiator IQN: {style_var(initiator_iqn)}.")
+    Console().print(f"{style_var('✓', color='green')} Using the initiator IQN {style_var(initiator_iqn)}.")
 
     # Create a host with the specified name and add the specified initiator IQN to it
     pure_create_iscsi_host(pure_client, host_name, initiator_iqn)
@@ -199,9 +203,9 @@ def iscsi(
     # Assign auth secret names to discovery portals
     assign_auth_secret_names_to_targets(portals, discovery_portal_auth_secret_names)
 
-    print_table_with_multiple_columns("iSCSI targets to be used", targets)
+    print_table_with_multiple_columns("iSCSI targets to be used", targets, sort_by="ip")
 
-    print_table_with_multiple_columns("iSCSI discovery portals to be used", portals)
+    print_table_with_multiple_columns("iSCSI discovery portals to be used", portals, sort_by="ip")
 
     if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

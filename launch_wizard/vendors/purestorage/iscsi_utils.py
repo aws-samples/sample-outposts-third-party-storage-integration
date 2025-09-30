@@ -29,15 +29,20 @@ def pure_create_iscsi_host(pure_client: flasharray.Client, host_name: str, initi
 
     Raises:
         typer.Exit: If the host cannot be created, the IQN is already in use by another host,
-                   or if a Pure Storage API error occurs.
+                    or if a Pure Storage API error occurs.
     """
 
+    Console().print(
+        f"Creating the iSCSI host {style_var(host_name)} with the initiator IQN {style_var(initiator_iqn)}..."
+    )
+
     try:
+        Console().print("Attempting to create a new host...")
         response = pure_client.post_hosts(host=flasharray.HostPost(iqns=[initiator_iqn]), names=[host_name])
         if isinstance(response, ErrorResponse):
             if response.errors[0].message == "Host already exists.":
                 Console().print(f"The host {style_var(host_name)} already exists.")
-                Console().print("Adding the initiator iSCSI Qualified Name (IQN) to the host.")
+                Console().print(f"Adding the initiator IQN {style_var(initiator_iqn)} to the existing host.")
                 pure_patch_iscsi_host(pure_client, host_name, initiator_iqn)
             elif response.errors[0].message == "The specified IQN is already in use.":
                 error_and_exit(
@@ -46,14 +51,18 @@ def pure_create_iscsi_host(pure_client: flasharray.Client, host_name: str, initi
                 )
             else:
                 error_and_exit(
-                    f"Failed to create iSCSI host {style_var(host_name, color='yellow')} with initiator IQN {style_var(initiator_iqn, color='yellow')}.",
+                    f"Failed to create the iSCSI host {style_var(host_name, color='yellow')} with the initiator IQN {style_var(initiator_iqn, color='yellow')}.",
                     Rule(),
                     Pretty(response),
                     code=ERR_PURE_API,
                 )
+        else:
+            Console().print(
+                f"{style_var('✓', color='green')} Successfully created the host {style_var(host_name)} with the initiator IQN {style_var(initiator_iqn)}."
+            )
     except PureError as e:
         error_and_exit(
-            f"Failed to create iSCSI host {style_var(host_name, color='yellow')} with initiator IQN {style_var(initiator_iqn, color='yellow')}.",
+            f"Failed to create the iSCSI host {style_var(host_name, color='yellow')} with the initiator IQN {style_var(initiator_iqn, color='yellow')}.",
             Rule(),
             str(e),
             code=ERR_PURE_API,
@@ -76,7 +85,10 @@ def pure_patch_iscsi_host(pure_client: flasharray.Client, host_name: str, initia
         typer.Exit: If the IQN cannot be added to the host or if a Pure Storage API error occurs.
     """
 
+    Console().print(f"Modifying the host {style_var(host_name)} to add the initiator IQN {style_var(initiator_iqn)}...")
+
     try:
+        Console().print("Adding the initiator IQN to the existing host...")
         response = pure_client.patch_hosts(host=flasharray.HostPatch(add_iqns=[initiator_iqn]), names=[host_name])
         if isinstance(response, ErrorResponse):
             if response.errors[0].message == "The specified IQN is already in use.":
@@ -91,6 +103,10 @@ def pure_patch_iscsi_host(pure_client: flasharray.Client, host_name: str, initia
                     Pretty(response),
                     code=ERR_PURE_API,
                 )
+        else:
+            Console().print(
+                f"{style_var('✓', color='green')} Successfully added the initiator IQN {style_var(initiator_iqn)} to the host {style_var(host_name)}."
+            )
     except PureError as e:
         error_and_exit(
             f"Failed to add the initiator iSCSI Qualified Name (IQN) {style_var(initiator_iqn, color='yellow')} to the host {style_var(host_name, color='yellow')}.",
@@ -119,20 +135,27 @@ def pure_get_iscsi_target_endpoints_and_iqns(
 
     Raises:
         typer.Exit: If no endpoints are specified, specified endpoints are not available,
-                   or if a Pure Storage API error occurs.
+                    or if a Pure Storage API error occurs.
     """
 
+    Console().print("Retrieving and validating iSCSI target endpoints...")
+
+    Console().print("Fetching available iSCSI target endpoints...")
     available_iscsi_target_endpoints_and_iqns = pure_get_available_iscsi_target_endpoints_and_iqns(pure_client)
 
     if not target_endpoints:
+        Console().print(
+            f"Found {style_var(len(available_iscsi_target_endpoints_and_iqns))} available iSCSI target endpoints."
+        )
         print_table_with_multiple_columns(
-            "Available iSCSI target endpoints and IQNs", available_iscsi_target_endpoints_and_iqns
+            "Available iSCSI target endpoints and IQNs", available_iscsi_target_endpoints_and_iqns, sort_by="ip"
         )
         if auto_confirm("Would you like to use all the listed iSCSI targets?", default=True):
+            Console().print(f"{style_var('✓', color='green')} Using all available iSCSI target endpoints.")
             return available_iscsi_target_endpoints_and_iqns
         else:
             target_endpoints = []
-            Console().print("Please enter target endpoints one by one. Press Enter on an empty line when finished.")
+            Console().print("Enter the target endpoints one by one. Press Enter on an empty line when finished.")
             while True:
                 target_endpoint = prompt_with_trim(
                     "iSCSI target endpoint (IP address)",
@@ -142,6 +165,7 @@ def pure_get_iscsi_target_endpoints_and_iqns(
                 if target_endpoint == "":
                     break
                 target_endpoints.append(target_endpoint)
+        Console().print("Validating the manually entered IP addresses...")
         validate_ip_list(target_endpoints)
 
     if len(target_endpoints) == 0:
@@ -150,19 +174,27 @@ def pure_get_iscsi_target_endpoints_and_iqns(
             code=ERR_INPUT_INVALID,
         )
 
+    Console().print(f"Validating {style_var(len(target_endpoints))} specified iSCSI target endpoints...")
     selected_target_endpoints_and_iqns = []
     for target_endpoint in target_endpoints:
+        Console().print(f"  Checking the endpoint {style_var(target_endpoint)}...")
         selected_target_endpoint_and_iqn = find_first_by_property(
             items=available_iscsi_target_endpoints_and_iqns, key="ip", value=target_endpoint
         )
         if selected_target_endpoint_and_iqn:
             selected_target_endpoints_and_iqns.append(selected_target_endpoint_and_iqn)
+            Console().print(
+                f"    {style_var('✓', color='green')} Found the iSCSI target IQN {style_var(selected_target_endpoint_and_iqn['iqn'])}."
+            )
         else:
             error_and_exit(
-                f"Target endpoint {style_var(target_endpoint, color='yellow')} is not available.",
+                f"The iSCSI target endpoint {style_var(target_endpoint, color='yellow')} is not available.",
                 code=ERR_ENDPOINT_NOT_FOUND,
             )
 
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully validated {style_var(len(selected_target_endpoints_and_iqns))} iSCSI target endpoints."
+    )
     return selected_target_endpoints_and_iqns
 
 
@@ -184,16 +216,28 @@ def pure_get_available_iscsi_target_endpoints_and_iqns(pure_client: flasharray.C
         typer.Exit: If iSCSI target endpoints cannot be retrieved or if a Pure Storage API error occurs.
     """
 
+    Console().print("Scanning network interface ports for iSCSI services...")
     available_iscsi_target_endpoints_and_iqns = []
     try:
+        Console().print("Retrieving the network interface port configuration...")
         network_interface_port_items = pure_client.get_ports().items
+        Console().print(f"Found {style_var(len(network_interface_port_items))} network interface ports to examine.")
+
         for network_interface_port_item in network_interface_port_items:
             # The properties are "name", "iqn", "nqn", "portal", etc.
             if hasattr(network_interface_port_item, "iqn"):
                 ip, port = parse_ip_and_port(network_interface_port_item.portal)
+                Console().print(f"  Processing the iSCSI endpoint {style_var(ip)}:{style_var(port)}...")
                 available_iscsi_target_endpoints_and_iqns.append(
                     {"ip": ip, "port": port, "iqn": network_interface_port_item.iqn}
                 )
+                Console().print(
+                    f"    {style_var('✓', color='green')} Found the iSCSI target IQN {style_var(network_interface_port_item.iqn)}."
+                )
+
+        Console().print(
+            f"{style_var('✓', color='green')} Successfully discovered {style_var(len(available_iscsi_target_endpoints_and_iqns))} iSCSI target endpoints."
+        )
     except PureError as e:
         error_and_exit(
             "Failed to retrieve available iSCSI target endpoints and IQNs.",

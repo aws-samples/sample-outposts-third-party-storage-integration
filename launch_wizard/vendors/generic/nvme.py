@@ -81,6 +81,7 @@ def nvme(
         subsystem_endpoints: List of NVMe subsystem endpoint addresses in IP or IP:PORT format (optional, will prompt if not provided).
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for subsystem authentication (optional).
         enable_dm_multipath: Whether to enable Device Mapper Multipath for redundant storage paths (optional).
+        guest_os_script_paths: List of paths to additional guest OS script files to execute (optional).
 
     Returns:
         The user data script on the data volumes workflow for SAN boot or LocalBoot.
@@ -93,13 +94,15 @@ def nvme(
     guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
     aws_client: AWSClient = ctx.obj["aws_client"]
 
+    Console().print(f"Starting the generic NVMe workflow for {style_var(feature_name.value)}...")
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.NVME)
 
     if not host_nqn:
         host_nqn = generate_or_input_host_nqn()
-        Console().print(f"Please configure your NVMe subsystem to allow the host NQN: {style_var(host_nqn)}.")
+        Console().print(f"Please configure your NVMe subsystem to allow the host NQN {style_var(host_nqn)}.")
     else:
-        Console().print(f"Using host NQN: {style_var(host_nqn)}.")
+        Console().print(f"{style_var('✓', color='green')} Using the host NQN {style_var(host_nqn)}.")
 
     allowed_storage_target_limit = get_storage_target_limit(feature_name)
 
@@ -109,7 +112,9 @@ def nvme(
         subsystem_endpoints = []
     if len(subsystem_nqns) == 0 and len(subsystem_endpoints) == 0:
         # Prompt for user input
-        Console().print("Enter subsystem information one by one. Press Enter on an empty Subsystem NQN when finished.")
+        Console().print(
+            "Enter the subsystem information one by one. Press Enter on an empty Subsystem NQN when finished."
+        )
         while allowed_storage_target_limit is None or len(subsystem_nqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
             subsystem_nqn = prompt_with_trim("Subsystem NQN", default="", show_default=False)
@@ -143,7 +148,7 @@ def nvme(
     # Assign auth secret names to subsystems
     assign_auth_secret_names_to_targets(subsystems, auth_secret_names)
 
-    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems)
+    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems, sort_by="ip")
 
     if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

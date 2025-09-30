@@ -53,9 +53,9 @@ def get_user_data_template_path(
         file_path = os.path.join(directory_path, f"{feature_name.value}_{protocol.value}.mustache")
 
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"User data template not found at path: {file_path}.")
+        raise FileNotFoundError(f"The user data template could not be found at the path {file_path}.")
 
-    Console().print(f"Using user data template: {style_var(file_path)}.")
+    Console().print(f"{style_var('✓', color='green')} Using the user data template at the path {style_var(file_path)}.")
     return file_path
 
 
@@ -110,7 +110,7 @@ def render_user_data(
 
     if not user_data_template_data:
         error_and_exit(
-            "No user data template data provided. This is required for instance configuration.",
+            "No user data template data is provided. This is required for instance configuration.",
             code=ERR_USER_DATA_NOT_FOUND,
         )
 
@@ -219,22 +219,32 @@ def save_user_data_path_to_file(user_data: str, file_path: str) -> str:
     # Expand user directory (~) if present
     file_path = os.path.expanduser(file_path)
 
+    Console().print(f"Saving the user data script to {style_var(file_path)}...")
+
     # Create directory if it doesn't exist
     directory = os.path.dirname(file_path)
     if directory and not os.path.exists(directory):
         try:
             os.makedirs(directory, exist_ok=True)
-            Console().print(f"Created directory: {style_var(directory)}")
+            Console().print(
+                f"{style_var('✓', color='green')} Successfully created the directory {style_var(directory)}."
+            )
         except OSError as e:
-            error_and_exit(f"Failed to create directory {directory}: {e}", code=ERR_GUEST_OS_SCRIPT_READ_FAILED)
+            error_and_exit(
+                f"Failed to create the directory {directory}.", Rule(), str(e), code=ERR_GUEST_OS_SCRIPT_READ_FAILED
+            )
 
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(user_data)
-        Console().print(f"User data script saved to: {style_var(file_path)}")
+        Console().print(
+            f"{style_var('✓', color='green')} Successfully saved the user data script to {style_var(file_path)}."
+        )
         return file_path
     except OSError as e:
-        error_and_exit(f"Failed to save user data to {file_path}: {e}", code=ERR_GUEST_OS_SCRIPT_READ_FAILED)
+        error_and_exit(
+            f"Failed to save the user data to {file_path}", Rule(), str(e), code=ERR_GUEST_OS_SCRIPT_READ_FAILED
+        )
 
 
 def process_guest_os_scripts(script_paths: Optional[List[str]]) -> List[Dict[str, str]]:
@@ -265,7 +275,7 @@ def process_guest_os_scripts(script_paths: Optional[List[str]]) -> List[Dict[str
             # Check if file exists
             if not os.path.exists(script_path):
                 error_and_exit(
-                    f"Guest OS script file not found: {style_var(script_path, color='yellow')}",
+                    f"The guest OS script file could not be found at the path {style_var(script_path, color='yellow')}.",
                     code=ERR_GUEST_OS_SCRIPT_NOT_FOUND,
                 )
 
@@ -274,7 +284,9 @@ def process_guest_os_scripts(script_paths: Optional[List[str]]) -> List[Dict[str
                 content = f.read().strip()
 
             if not content:
-                Console().print(f"Warning: Guest OS script file {style_var(script_path)} is empty, skipping.")
+                Console().print(
+                    f"{style_var('Warning', color='yellow')}: The guest OS script file {style_var(script_path)} is empty. It will be skipped."
+                )
                 continue
 
             # Determine content type based on file extension and content
@@ -282,10 +294,12 @@ def process_guest_os_scripts(script_paths: Optional[List[str]]) -> List[Dict[str
 
             guest_os_scripts.append({"type": content_type, "content": content})
 
-            Console().print(f"Added guest OS script: {style_var(script_path)} (type: {style_var(content_type)})")
+            Console().print(
+                f"Added the guest OS script {style_var(script_path)}. The inferred type is {style_var(content_type)}."
+            )
         except IOError as e:
             error_and_exit(
-                f"Failed to read guest OS script file {style_var(script_path, color='yellow')}",
+                f"Failed to read the guest OS script file {style_var(script_path, color='yellow')}.",
                 Rule(),
                 str(e),
                 code=ERR_GUEST_OS_SCRIPT_READ_FAILED,
@@ -318,7 +332,9 @@ def _determine_script_content_type(file_path: str, content: str) -> str:
         return "text/x-shellscript"
 
     # Default to shell script for unknown types
-    Console().print(f"Warning: Unknown script type for {style_var(file_path)}, treating as shell script.")
+    Console().print(
+        f"{style_var('Warning', color='yellow')}: The script type for {style_var(file_path)} is unknown. It will be treated as a shell script."
+    )
     return "text/x-shellscript"
 
 
@@ -344,7 +360,7 @@ def process_guest_os_scripts_input(
 
     Raises:
         typer.Exit: If a script file cannot be read or has an unsupported format,
-                   or if the user aborts the operation.
+                    or if the user aborts the operation.
     """
 
     guest_os_scripts: List[Dict[str, str]] = []
@@ -353,27 +369,27 @@ def process_guest_os_scripts_input(
     if feature_name not in [FeatureName.LOCALBOOT, FeatureName.SANBOOT]:
         if guest_os_script_paths:
             Console().print(
-                f"Warning: Guest OS scripts are only supported for {style_var(FeatureName.LOCALBOOT.name)} and {style_var(FeatureName.SANBOOT.name)} features. Scripts will be ignored."
+                f"{style_var('Warning', color='yellow')}: Guest OS scripts are only supported for {style_var(FeatureName.LOCALBOOT.name)} and {style_var(FeatureName.SANBOOT.name)} features. The scripts will be ignored."
             )
         return guest_os_scripts
 
     if guest_os_type == OperationSystemType.WINDOWS:
         Console().print(
-            f"Warning: Guest OS scripts are not supported for {style_var(OperationSystemType.WINDOWS.name)} guest OS type. Scripts will be ignored."
+            f"{style_var('Warning', color='yellow')}: Guest OS scripts are not supported for {style_var(OperationSystemType.WINDOWS.name)} guest OS type. The scripts will be ignored."
         )
         return guest_os_scripts
 
     # If no scripts provided and feature supports them, prompt the user
     if not guest_os_script_paths:
         Console().print(
-            f"No guest OS scripts specified. Guest OS scripts can be used to customize the guest OS configuration after {style_var('LocalBoot')} or {style_var('SAN boot')}."
+            f"No guest OS scripts were specified. Guest OS scripts can be used to customize the guest OS configuration after {style_var('LocalBoot')} or {style_var('SAN boot')}."
         )
 
         if not auto_confirm("Would you like to add guest OS scripts?", default=False):
             return guest_os_scripts
 
         # User wants to specify scripts, prompt for them
-        Console().print("Please provide guest OS script file paths. Press Enter on an empty line when finished.")
+        Console().print("Please provide the guest OS script file paths. Press Enter on an empty line when finished.")
         script_paths: List[str] = []
 
         while True:
@@ -388,11 +404,15 @@ def process_guest_os_scripts_input(
 
             # Validate the file exists
             if not os.path.exists(script_path):
-                Console().print(f"Warning: File {style_var(script_path)} does not exist. Please try again.")
+                Console().print(
+                    f"{style_var('Warning', color='yellow')}: The file {style_var(script_path)} does not exist. Please try again."
+                )
                 continue
 
             script_paths.append(script_path)
-            Console().print(f"Added script: {style_var(script_path)}")
+            Console().print(
+                f"{style_var('✓', color='green')} Successfully added the script file {style_var(script_path)}."
+            )
 
         if not script_paths:
             if auto_confirm("No scripts were specified. Would you like to proceed?", default=True):

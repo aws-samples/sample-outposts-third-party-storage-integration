@@ -105,13 +105,15 @@ def validate_lun_for_feature(lun: Optional[int], feature_name: FeatureName) -> O
 
     # Handle LUN parameter based on feature type
     if feature_name == FeatureName.DATA_VOLUMES and lun is not None:
-        Console().print(style_var("LUN is specified but will be ignored for the data volumes feature.", color="yellow"))
+        Console().print(
+            style_var("The LUN was specified but will be ignored for the data volumes feature.", color="yellow")
+        )
         return None
     elif feature_name in [FeatureName.SANBOOT, FeatureName.LOCALBOOT]:
         if lun is None:
             # Prompt user to confirm proceeding without LUN
             if not auto_confirm(
-                "No LUN (Logical Unit Number) specified. Would you like to proceed with the default LUN 0?",
+                "No LUN (Logical Unit Number) was specified. Would you like to proceed with the default LUN 0?",
                 default=True,
             ):
                 lun = prompt_with_trim("Please enter a LUN value", data_type=int)
@@ -120,7 +122,9 @@ def validate_lun_for_feature(lun: Optional[int], feature_name: FeatureName) -> O
             try:
                 # Validate the LUN
                 validate_lun(lun)
-                Console().print(f"Using LUN {style_var(lun)} for {style_var(feature_name.value)}.")
+                Console().print(
+                    f"{style_var('✓', color='green')} Using LUN {style_var(lun)} for {style_var(feature_name.value)}."
+                )
             except ValueError as e:
                 error_and_exit("Invalid LUN value.", Rule(), str(e), code=ERR_INPUT_INVALID)
 
@@ -207,7 +211,7 @@ def validate_auth_secret_names_for_targets(
     auth_secret_names = process_auth_secret_names(auth_secret_names_raw_input)
 
     if not auth_secret_names and not auto_confirm(
-        f"No authentication secrets specified for the {target_type}. Would you like to use authentication?",
+        f"No authentication secrets were specified for the {target_type}. Would you like to use authentication?",
         default=False,
     ):
         return [None] * len(targets)
@@ -216,7 +220,10 @@ def validate_auth_secret_names_for_targets(
 
     if not auth_secret_names:
         print_table_with_single_column(
-            "Available secrets in AWS Secrets Manager", available_secret_names, "Secret Name"
+            "Available secrets in AWS Secrets Manager",
+            available_secret_names,
+            column_name="Secret Name",
+            sort_data=True,
         )
 
         auth_secret_names = []
@@ -235,14 +242,14 @@ def validate_auth_secret_names_for_targets(
     # If more auth secret names than targets, that's an error
     if num_auth_secrets > num_targets:
         error_and_exit(
-            f"Too many authentication secrets specified. You provided {style_var(num_auth_secrets, color='yellow')} authentication secrets but only have {style_var(num_targets, color='yellow')} {target_type}.",
+            f"Too many authentication secrets were specified. You provided {style_var(num_auth_secrets, color='yellow')} authentication secrets but only have {style_var(num_targets, color='yellow')} {target_type}.",
             code=ERR_INPUT_INVALID,
         )
 
     # If fewer auth secret names than targets, pad with None values
     if num_auth_secrets < num_targets:
         Console().print(
-            f"Only {style_var(num_auth_secrets, color='yellow')} authentication secrets specified for {style_var(num_targets, color='yellow')} {target_type}. The remaining {style_var(num_targets - num_auth_secrets, color='yellow')} {target_type} will not have authentication configured."
+            f"Only {style_var(num_auth_secrets, color='yellow')} authentication secrets were specified for {style_var(num_targets, color='yellow')} {target_type}. The remaining {style_var(num_targets - num_auth_secrets, color='yellow')} {target_type} will not have authentication configured."
         )
         # Pad the list with None values to match the number of targets
         auth_secret_names.extend([None] * (num_targets - num_auth_secrets))

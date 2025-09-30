@@ -5,11 +5,10 @@ AWS Secrets Manager operations and helper functions.
 from typing import List
 
 import boto3
-from botocore.exceptions import ClientError
+from rich.console import Console
 
 from launch_wizard.aws.pagination import paginate_aws_response
-from launch_wizard.common.error_codes import ERR_AWS_CLIENT
-from launch_wizard.utils.ui_utils import error_and_exit
+from launch_wizard.utils.display_utils import style_var
 
 
 def get_available_secret_names(secrets_manager_client: boto3.client) -> List[str]:
@@ -29,11 +28,14 @@ def get_available_secret_names(secrets_manager_client: boto3.client) -> List[str
         typer.Exit: If an AWS error occurs during the API call.
     """
 
-    try:
-        available_secrets = paginate_aws_response(secrets_manager_client.list_secrets, "SecretList")
+    Console().print("Retrieving available secrets...")
 
-        available_secret_names = [secret["Name"] for secret in available_secrets]
+    available_secrets = paginate_aws_response(secrets_manager_client.list_secrets, "SecretList")
 
-        return available_secret_names
-    except ClientError as e:
-        error_and_exit(str(e), code=ERR_AWS_CLIENT)
+    available_secret_names = [secret["Name"] for secret in available_secrets]
+
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully retrieved {style_var(len(available_secret_names))} secrets."
+    )
+
+    return available_secret_names

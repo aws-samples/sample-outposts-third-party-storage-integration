@@ -41,7 +41,7 @@ class AWSClient:
                 self._session = boto3.Session()
             except NoCredentialsError as e:
                 error_and_exit(
-                    'AWS credentials not found. Please configure AWS CLI using "aws configure" or set environment variables. Required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and optionally AWS_SESSION_TOKEN.',
+                    'AWS credentials could not be found. Please configure AWS CLI using "aws configure" or set environment variables. Required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and optionally AWS_SESSION_TOKEN.',
                     Rule(),
                     str(e),
                     code=ERR_AWS_CLIENT,
@@ -61,7 +61,7 @@ class AWSClient:
             try:
                 self._ec2 = self.session.client("ec2", region_name=self.region)
             except Exception as e:
-                error_and_exit("Failed to initialize EC2 client.", Rule(), str(e), code=ERR_AWS_CLIENT)
+                error_and_exit("Failed to initialize the EC2 client.", Rule(), str(e), code=ERR_AWS_CLIENT)
         return self._ec2
 
     @property
@@ -74,7 +74,7 @@ class AWSClient:
             try:
                 self._iam = self.session.client("iam", region_name=self.region)
             except Exception as e:
-                error_and_exit("Failed to initialize IAM client.", Rule(), str(e), code=ERR_AWS_CLIENT)
+                error_and_exit("Failed to initialize the IAM client.", Rule(), str(e), code=ERR_AWS_CLIENT)
         return self._iam
 
     @property
@@ -87,7 +87,7 @@ class AWSClient:
             try:
                 self._outposts = self.session.client("outposts", region_name=self.region)
             except Exception as e:
-                error_and_exit("Failed to initialize Outposts client.", Rule(), str(e), code=ERR_AWS_CLIENT)
+                error_and_exit("Failed to initialize the Outposts client.", Rule(), str(e), code=ERR_AWS_CLIENT)
         return self._outposts
 
     @property
@@ -100,5 +100,5 @@ class AWSClient:
             try:
                 self._secrets_manager = self.session.client("secretsmanager", region_name=self.region)
             except Exception as e:
-                error_and_exit("Failed to initialize Secrets Manager client.", Rule(), str(e), code=ERR_AWS_CLIENT)
+                error_and_exit("Failed to initialize the Secrets Manager client.", Rule(), str(e), code=ERR_AWS_CLIENT)
         return self._secrets_manager

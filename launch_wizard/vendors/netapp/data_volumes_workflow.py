@@ -43,7 +43,7 @@ def execute_data_volumes_workflow(
     protocol = prompt_for_storage_protocol(default_protocol)
 
     Console().print(Rule())
-    Console().print(style_var("Starting data volumes configuration workflow..."))
+    Console().print(style_var("Starting the data volumes configuration workflow..."))
 
     try:
         # Import the NetApp iSCSI and NVMe workflow functions
@@ -76,10 +76,11 @@ def execute_data_volumes_workflow(
             Console().print(style_var(f"The protocol {protocol} is not supported.", color="red"))
             return None
 
-        Console().print(style_var("Data volumes configuration completed successfully.", color="green"))
+        Console().print(f"{style_var('✓', color='green')} The data volumes configuration is completed successfully.")
         Console().print(Rule())
         return user_data
     except Exception as e:
-        Console().print(style_var("Data volumes configuration failed.", color="yellow"))
+        Console().print(f"{style_var('✗', color='red')} The data volumes configuration failed.")
         Console().print(style_var(str(e), color="red"))
+        Console().print(Rule())
         return None

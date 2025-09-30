@@ -124,6 +124,7 @@ def nvme(
         subsystem_endpoints: List of NVMe subsystem endpoint IP addresses (optional).
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for subsystem authentication (optional).
         enable_dm_multipath: Whether to enable Device Mapper Multipath for redundant storage paths (optional).
+        guest_os_script_paths: List of paths to additional guest OS script files to execute (optional).
 
     Returns:
         The user data script on the data volumes workflow for SAN boot or LocalBoot.
@@ -136,9 +137,12 @@ def nvme(
     guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
     aws_client: AWSClient = ctx.obj["aws_client"]
 
+    Console().print(f"Starting the Pure Storage NVMe workflow for {style_var(feature_name.value)}...")
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.NVME)
 
     # Create a client instance to communicate with the Pure Storage FlashArray
+    Console().print(f"Connecting to the Pure Storage storage device at {style_var(pure_management_ip)}...")
     pure_client = flasharray.Client(target=pure_management_ip, api_token=pure_api_key)
 
     # Get the volume UUIDs from the names
@@ -151,7 +155,7 @@ def nvme(
     # If there is no host NQN, generate one or get from user input
     if not host_nqn:
         host_nqn = generate_or_input_host_nqn()
-    Console().print(f"Using host NQN: {style_var(host_nqn)}.")
+    Console().print(f"{style_var('✓', color='green')} Using the host NQN {style_var(host_nqn)}.")
 
     # Create a host with the specified name and add the specified host NQN to it
     pure_create_nvme_host(pure_client, host_name, host_nqn)
@@ -178,7 +182,7 @@ def nvme(
     # Assign auth secret names to subsystems
     assign_auth_secret_names_to_targets(subsystems, auth_secret_names)
 
-    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems)
+    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems, sort_by="ip")
     if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 

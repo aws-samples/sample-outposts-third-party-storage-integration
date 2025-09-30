@@ -90,6 +90,7 @@ def iscsi(
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for target authentication (optional).
         discovery_portal_auth_secret_names_raw_input: List of AWS Secrets Manager secret names for discovery portal authentication (optional).
         lun: Logical Unit Number for SAN boot and LocalBoot features (optional, 0-255).
+        guest_os_script_paths: List of paths to additional guest OS script files to execute (optional).
 
     Returns:
         The user data script on the data volumes workflow for SAN boot or LocalBoot.
@@ -102,13 +103,15 @@ def iscsi(
     guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
     aws_client: AWSClient = ctx.obj["aws_client"]
 
+    Console().print(f"Starting the generic iSCSI workflow for {style_var(feature_name.value)}...")
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.ISCSI)
 
     if not initiator_iqn:
         initiator_iqn = generate_or_input_initiator_iqn()
-        Console().print(f"Please configure your iSCSI target to allow the initiator IQN: {style_var(initiator_iqn)}.")
+        Console().print(f"Please configure your iSCSI target to allow the initiator IQN {style_var(initiator_iqn)}.")
     else:
-        Console().print(f"Using initiator IQN: {style_var(initiator_iqn)}.")
+        Console().print(f"{style_var('✓', color='green')} Using the initiator IQN {style_var(initiator_iqn)}.")
 
     allowed_storage_target_limit = get_storage_target_limit(feature_name)
 
@@ -118,7 +121,7 @@ def iscsi(
         target_endpoints = []
     if len(target_iqns) == 0 and len(target_endpoints) == 0:
         # Prompt for user input
-        Console().print("Enter target information one by one. Press Enter on an empty Target IQN when finished.")
+        Console().print("Enter the target information one by one. Press Enter on an empty Target IQN when finished.")
         while allowed_storage_target_limit is None or len(target_iqns) < allowed_storage_target_limit:
             # Only if there is no limit or the limit has not been reached
             target_iqn = prompt_with_trim("Target IQN", default="", show_default=False)
@@ -167,9 +170,9 @@ def iscsi(
     # Assign auth secret names to discovery portals
     assign_auth_secret_names_to_targets(portals, discovery_portal_auth_secret_names)
 
-    print_table_with_multiple_columns("iSCSI targets to be used", targets)
+    print_table_with_multiple_columns("iSCSI targets to be used", targets, sort_by="ip")
 
-    print_table_with_multiple_columns("iSCSI discovery portals to be used", portals)
+    print_table_with_multiple_columns("iSCSI discovery portals to be used", portals, sort_by="ip")
 
     if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

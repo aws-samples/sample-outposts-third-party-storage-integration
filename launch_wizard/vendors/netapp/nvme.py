@@ -105,6 +105,7 @@ def nvme(
         subsystem_endpoints: List of NVMe subsystem endpoint IP addresses (optional).
         auth_secret_names_raw_input: List of AWS Secrets Manager secret names for subsystem authentication (optional).
         enable_dm_multipath: Whether to enable Device Mapper Multipath for redundant storage paths (optional).
+        guest_os_script_paths: List of paths to additional guest OS script files to execute (optional).
 
     Returns:
         The user data script on the data volumes workflow for SAN boot or LocalBoot.
@@ -117,10 +118,12 @@ def nvme(
     guest_os_type: OperationSystemType = ctx.obj["guest_os_type"]
     aws_client: AWSClient = ctx.obj["aws_client"]
 
+    Console().print(f"Starting the NetApp NVMe workflow for {style_var(feature_name.value)}...")
+
     validate_feature(feature_name, guest_os_type, StorageProtocol.NVME)
 
-    # Establish a connection to the NetApp cluster
-    # TODO: make verify=False optional, currently required as we generally use self signed certs
+    # Establish a connection to the NetApp storage device
+    Console().print(f"Connecting to the NetApp storage device at {style_var(netapp_management_ip)}...")
     config.CONNECTION = HostConnection(netapp_management_ip, netapp_username, netapp_password, verify=False)
 
     # Verify we have subsystem names, if not provide a list of available ones.
@@ -129,7 +132,7 @@ def nvme(
     # If there is no host NQN, generate one or get from user input
     if not host_nqn:
         host_nqn = generate_or_input_host_nqn()
-    Console().print(f"Using host NQN: {style_var(host_nqn)}.")
+    Console().print(f"{style_var('✓', color='green')} Using the host NQN {style_var(host_nqn)}.")
 
     # Add the host NQN to the subsystems
     nvme_subsystem_uuids = [nvme_subsystem["uuid"] for nvme_subsystem in nvme_subsystems]
@@ -149,7 +152,7 @@ def nvme(
     # Assign auth secret names to subsystems
     assign_auth_secret_names_to_targets(subsystems, auth_secret_names)
 
-    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems)
+    print_table_with_multiple_columns("NVMe subsystems to be used", subsystems, sort_by="ip")
 
     if not auto_confirm("Would you like to proceed with launching the instance?", default=True):
         error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)

@@ -78,6 +78,8 @@ def validate_ami(ec2_client: boto3.client, ami_id: Optional[str]) -> str:
         if not auto_confirm("Do you want to continue with this unverified AMI?", default=True):
             error_and_exit("Operation aborted by user.", code=ERR_USER_ABORT)
 
+    Console().print(f"{style_var('✓', color='green')} Using the AMI {style_var(ami_name)} ({style_var(ami_id)}).")
+
     return ami_id
 
 
@@ -103,7 +105,9 @@ def validate_subnet(ec2_client: boto3.client, subnet_id: Optional[str]) -> Tuple
     available_subnets_for_outposts = get_available_subnets_for_outposts(ec2_client)
 
     if not subnet_id:
-        print_table_with_multiple_columns("Available Outpost subnets", available_subnets_for_outposts)
+        print_table_with_multiple_columns(
+            "Available Outpost subnets", available_subnets_for_outposts, sort_by="subnet_id"
+        )
 
         subnet_id = prompt_with_trim("Please enter a subnet ID", data_type=str)
 
@@ -111,13 +115,15 @@ def validate_subnet(ec2_client: boto3.client, subnet_id: Optional[str]) -> Tuple
 
     if not selected_subnet:
         error_and_exit(
-            f"Subnet {style_var(subnet_id, color='yellow')} is not available. It either does not exist or is not associated with an Outpost.",
+            f"The subnet {style_var(subnet_id, color='yellow')} is not available. It either does not exist or is not associated with an Outpost.",
             code=ERR_AWS_SUBNET_NOT_FOUND,
         )
 
     outpost_arn = selected_subnet["outpost_arn"]
 
-    Console().print(f"Using subnet {style_var(subnet_id)} associated with Outpost {style_var(outpost_arn)}.")
+    Console().print(
+        f"{style_var('✓', color='green')} Using the subnet {style_var(subnet_id)} associated with the Outpost {style_var(outpost_arn)}."
+    )
 
     return subnet_id, outpost_arn
 
@@ -137,19 +143,21 @@ def validate_network(ec2_client: boto3.client, subnet_id: str, outpost_hardware_
 
     Raises:
         typer.Exit: If LNI configuration is required but not enabled, the user declines to configure it,
-                   or if an AWS error occurs.
+                    or if an AWS error occurs.
     """
 
     try:
         if outpost_hardware_type == OutpostHardwareType.SERVER:
+            Console().print("Validating the LNI (Local Network Interface) configuration...")
             describe_subnets_response = ec2_client.describe_subnets(SubnetIds=[subnet_id])
             subnet = describe_subnets_response["Subnets"][0]
 
             if "EnableLniAtDeviceIndex" not in subnet or int(subnet["EnableLniAtDeviceIndex"]) != 1:
                 if auto_confirm(
-                    "This tool requires the subnet to have Local Network Interface (LNI) configured at device index 1. Would you like to update the subnet configuration?",
+                    "This tool requires the subnet to have the LNI configured at device index 1. Would you like to update the subnet configuration?",
                     default=True,
                 ):
+                    Console().print(f"Updating subnet {style_var(subnet_id)} to enable the LNI at device index 1...")
                     # Enable LNI at the specified device index
                     ec2_client.modify_subnet_attribute(SubnetId=subnet_id, EnableLniAtDeviceIndex=1)
                     # Update the subnet with the new data
@@ -157,12 +165,12 @@ def validate_network(ec2_client: boto3.client, subnet_id: str, outpost_hardware_
                     subnet = describe_subnets_response["Subnets"][0]
                 else:
                     error_and_exit(
-                        "Subnet doesn't have Local Network Interface (LNI) configured at device index 1.",
+                        "The subnet does not have the LNI configured at device index 1.",
                         code=ERR_AWS_SUBNET_LNI_CONFIG_INVALID,
                     )
 
             Console().print(
-                f"Subnet {style_var(subnet_id)} has Local Network Interface (LNI) configured at index {style_var(subnet['EnableLniAtDeviceIndex'])}."
+                f"The subnet {style_var(subnet_id)} has the LNI configured at index {style_var(subnet['EnableLniAtDeviceIndex'])}."
             )
     except ClientError as e:
         error_and_exit(str(e), code=ERR_AWS_CLIENT)
@@ -188,7 +196,7 @@ def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) ->
     """
 
     if not key_pair_name and not auto_confirm(
-        "No key pair name specified. Would you like to use a key pair to allow SSH access to the instance?",
+        "No key pair name was specified. Would you like to use a key pair to allow SSH access to the instance?",
         default=False,
     ):
         return None
@@ -196,15 +204,19 @@ def validate_key_pair(ec2_client: boto3.client, key_pair_name: Optional[str]) ->
     available_key_pair_names = get_available_key_pair_names(ec2_client)
 
     if not key_pair_name:
-        print_table_with_single_column("Available key pairs", available_key_pair_names, column_name="Key Pair Name")
+        print_table_with_single_column(
+            "Available key pairs", available_key_pair_names, column_name="Key Pair Name", sort_data=True
+        )
 
         key_pair_name = prompt_with_trim("Please enter a key pair name", data_type=str)
 
     if key_pair_name not in available_key_pair_names:
         error_and_exit(
-            f"Key pair {style_var(key_pair_name, color='yellow')} is not available in your account.",
+            f"The key pair {style_var(key_pair_name, color='yellow')} is not available in your account.",
             code=ERR_AWS_KEY_PAIR_NOT_FOUND,
         )
+
+    Console().print(f"{style_var('✓', color='green')} Using the key pair {style_var(key_pair_name)}.")
 
     return key_pair_name
 
@@ -229,7 +241,7 @@ def validate_security_group(ec2_client: boto3.client, security_group_id: Optiona
     """
 
     if not security_group_id and auto_confirm(
-        "No security group specified. Would you like to use the default security group in the VPC?", default=True
+        "No security group was specified. Would you like to use the default security group in the VPC?", default=True
     ):
         return None
 
@@ -237,16 +249,18 @@ def validate_security_group(ec2_client: boto3.client, security_group_id: Optiona
 
     if not security_group_id:
         print_table_with_single_column(
-            "Available security groups", available_security_group_ids, column_name="Security Group ID"
+            "Available security groups", available_security_group_ids, column_name="Security Group ID", sort_data=True
         )
 
         security_group_id = prompt_with_trim("Please enter a security group ID", data_type=str)
 
     if security_group_id not in available_security_group_ids:
         error_and_exit(
-            f"Security group {style_var(security_group_id, color='yellow')} is not available in your account.",
+            f"The security group {style_var(security_group_id, color='yellow')} is not available in your account.",
             code=ERR_AWS_SECURITY_GROUP_NOT_FOUND,
         )
+
+    Console().print(f"{style_var('✓', color='green')} Using the security group {style_var(security_group_id)}.")
 
     return security_group_id
 
@@ -271,7 +285,7 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
     """
 
     if not instance_profile_name and not auto_confirm(
-        "No instance profile specified. Would you like to use an instance profile to allow the instance to access AWS services?",
+        "No instance profile was specified. Would you like to use an instance profile to allow the instance to access AWS services?",
         default=False,
     ):
         return None
@@ -280,7 +294,10 @@ def validate_instance_profile(iam_client: boto3.client, instance_profile_name: O
 
     if not instance_profile_name:
         print_table_with_single_column(
-            "Available instance profiles", available_instance_profile_names, column_name="Instance Profile Name"
+            "Available instance profiles",
+            available_instance_profile_names,
+            column_name="Instance Profile Name",
+            sort_data=True,
         )
 
         instance_profile_name = prompt_with_trim("Please enter an instance profile name", data_type=str)
@@ -310,10 +327,12 @@ def validate_instance_name(instance_name: Optional[str]) -> Optional[str]:
     """
 
     if not instance_name:
-        if not auto_confirm("No instance name specified. Would you like to name the instance?", default=False):
+        if not auto_confirm("No instance name was specified. Would you like to name the instance?", default=False):
             return None
 
         instance_name = prompt_with_trim("Please enter an instance name", data_type=str)
+
+    Console().print(f"{style_var('✓', color='green')} Using the instance name {style_var(instance_name)}.")
 
     return instance_name
 
@@ -344,9 +363,13 @@ def validate_root_volume_options(
 
     # Get AMI details to determine default volume size, type, and root device name
     try:
+        Console().print(f"Retrieving details for the AMI {style_var(ami_id)}...")
+
         describe_images_response = ec2_client.describe_images(ImageIds=[ami_id])
         if not describe_images_response["Images"]:
-            error_and_exit(f"AMI {style_var(ami_id, color='yellow')} not found.", code=ERR_AWS_AMI_NOT_FOUND)
+            error_and_exit(
+                f"The AMI {style_var(ami_id, color='yellow')} could not be found.", code=ERR_AWS_AMI_NOT_FOUND
+            )
 
         ami = describe_images_response["Images"][0]
 
@@ -370,7 +393,7 @@ def validate_root_volume_options(
     # If neither option is specified, return early with None values
     if not root_volume_size and not root_volume_type:
         if auto_confirm(
-            "No root volume size or type specified. Would you like to use the default configuration from the selected AMI?",
+            "No root volume size or type was specified. Would you like to use the default configuration from the selected AMI?",
             default=True,
         ):
             return None, None, None
@@ -388,7 +411,7 @@ def validate_root_volume_options(
 
                     if root_volume_size < default_volume_size:
                         Console().print(
-                            style_var(f"Volume size must be at least {default_volume_size} GiB.", color="red")
+                            style_var(f"The volume size must be at least {default_volume_size} GiB.", color="red")
                         )
                         continue
                     break
@@ -399,7 +422,7 @@ def validate_root_volume_options(
         # Validate provided size
         if root_volume_size < default_volume_size:
             error_and_exit(
-                f"Root volume size {style_var(root_volume_size)} GiB is less than the minimum required {style_var(default_volume_size)} GiB for this AMI.",
+                f"The root volume size {style_var(root_volume_size)} GiB is less than the minimum required {style_var(default_volume_size)} GiB for this AMI.",
                 code=ERR_AWS_CLIENT,
             )
 
@@ -413,7 +436,7 @@ def validate_root_volume_options(
         if not auto_confirm(type_prompt, default=True):
             available_volume_types = [volume_type.value for volume_type in EBSVolumeType]
             print_table_with_single_column(
-                "Available EBS volume types", available_volume_types, column_name="Volume Type"
+                "Available EBS volume types", available_volume_types, column_name="Volume Type", sort_data=True
             )
 
             while True:
@@ -446,9 +469,13 @@ def get_ami_name(ec2_client: boto3.client, ami_id: str) -> str:
     """
 
     try:
+        Console().print(f"Retrieving the name for the AMI {style_var(ami_id)}...")
+
         describe_images_response = ec2_client.describe_images(ImageIds=[ami_id])
         if not describe_images_response["Images"]:
-            error_and_exit(f"AMI {style_var(ami_id, color='yellow')} could not be found.", code=ERR_AWS_AMI_NOT_FOUND)
+            error_and_exit(
+                f"The AMI {style_var(ami_id, color='yellow')} could not be found.", code=ERR_AWS_AMI_NOT_FOUND
+            )
 
         return describe_images_response["Images"][0]["Name"]
     except ClientError as e:
@@ -473,6 +500,8 @@ def get_available_subnets_for_outposts(ec2_client: boto3.client) -> List[Dict[st
         typer.Exit: If no Outpost subnets are found or if an AWS error occurs.
     """
 
+    Console().print("Retrieving available subnets for Outposts...")
+
     # Use the paginate function to get all subnets
     available_subnets = paginate_aws_response(ec2_client.describe_subnets, "Subnets")
 
@@ -485,6 +514,11 @@ def get_available_subnets_for_outposts(ec2_client: boto3.client) -> List[Dict[st
     result = []
     for subnet in subnets_for_outposts:
         result.append({"subnet_id": subnet["SubnetId"], "outpost_arn": subnet["OutpostArn"]})
+
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully retrieved {style_var(len(result))} subnets for Outposts."
+    )
+
     return result
 
 
@@ -505,10 +539,16 @@ def get_available_key_pair_names(ec2_client: boto3.client) -> List[str]:
         typer.Exit: If an AWS error occurs during the API call.
     """
 
+    Console().print("Retrieving available key pairs...")
+
     # Use the paginate function to get all key pairs
     available_key_pairs = paginate_aws_response(ec2_client.describe_key_pairs, "KeyPairs")
 
     available_key_pair_names = [key_pair["KeyName"] for key_pair in available_key_pairs]
+
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully retrieved {style_var(len(available_key_pair_names))} key pairs."
+    )
 
     return available_key_pair_names
 
@@ -530,9 +570,15 @@ def get_available_security_group_ids(ec2_client: boto3.client) -> List[str]:
         typer.Exit: If an AWS error occurs during the API call.
     """
 
+    Console().print("Retrieving available security groups...")
+
     available_security_groups = paginate_aws_response(ec2_client.describe_security_groups, "SecurityGroups")
 
     available_security_group_ids = [security_group["GroupId"] for security_group in available_security_groups]
+
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully retrieved {style_var(len(available_security_group_ids))} security groups."
+    )
 
     return available_security_group_ids
 
@@ -556,11 +602,14 @@ def get_root_volume_device_name(ec2_client: boto3.client, ami_id: str) -> str:
     """
 
     try:
-        Console().print(f"Using AMI {style_var(ami_id)}.")
+        Console().print(f"Retrieving the root device name for the AMI {style_var(ami_id)}...")
+
         describe_images_response = ec2_client.describe_images(ImageIds=[ami_id])
 
         if not describe_images_response["Images"]:
-            error_and_exit(f"AMI {style_var(ami_id, color='yellow')} not found.", code=ERR_AWS_AMI_NOT_FOUND)
+            error_and_exit(
+                f"The AMI {style_var(ami_id, color='yellow')} could not be found.", code=ERR_AWS_AMI_NOT_FOUND
+            )
 
         return describe_images_response["Images"][0]["RootDeviceName"]
     except ClientError as e:
@@ -586,11 +635,13 @@ def get_vpc_id(ec2_client: boto3.client, subnet_id: str) -> str:
     """
 
     try:
+        Console().print(f"Retrieving the VPC ID for the subnet {style_var(subnet_id)}...")
+
         describe_subnets_response = ec2_client.describe_subnets(SubnetIds=[subnet_id])
 
         if not describe_subnets_response["Subnets"]:
             error_and_exit(
-                f"No subnet found with ID {style_var(subnet_id, color='yellow')}.", code=ERR_AWS_SUBNET_NOT_FOUND
+                f"No subnet was found with ID {style_var(subnet_id, color='yellow')}.", code=ERR_AWS_SUBNET_NOT_FOUND
             )
 
         return describe_subnets_response["Subnets"][0]["VpcId"]
@@ -617,13 +668,15 @@ def get_default_security_group_id(ec2_client: boto3.client, vpc_id: str) -> str:
     """
 
     try:
+        Console().print(f"Retrieving the default security group for the VPC {style_var(vpc_id)}...")
+
         describe_security_groups_response = ec2_client.describe_security_groups(
             Filters=[{"Name": "vpc-id", "Values": [vpc_id]}, {"Name": "group-name", "Values": ["default"]}]
         )
 
         if not describe_security_groups_response["SecurityGroups"]:
             error_and_exit(
-                f"No security group found for VPC {style_var(vpc_id, color='yellow')}.",
+                f"No security group was found for VPC {style_var(vpc_id, color='yellow')}.",
                 code=ERR_AWS_SECURITY_GROUP_NOT_FOUND,
             )
 
@@ -655,46 +708,58 @@ def create_network_interface_with_coip(ec2_client: boto3.client, subnet_id: str,
 
     try:
         # Create a network interface
+        Console().print(f"Creating a network interface in the subnet {style_var(subnet_id)}...")
         create_network_interface_response = ec2_client.create_network_interface(
             SubnetId=subnet_id, Groups=[security_group_id]
         )
         network_interface_id = create_network_interface_response["NetworkInterface"]["NetworkInterfaceId"]
-        Console().print(f"Created network interface with ID: {style_var(network_interface_id)}.")
+        Console().print(
+            f"{style_var('✓', color='green')} Successfully created the network interface with ID {style_var(network_interface_id)}."
+        )
 
         # Find the Outpost ARN associated with the subnet
+        Console().print("Retrieving the Outpost associated with the subnet...")
         describe_subnets_response = ec2_client.describe_subnets(SubnetIds=[subnet_id])
         outpost_arn = describe_subnets_response["Subnets"][0]["OutpostArn"]
-        Console().print(f"Using Outpost with ARN: {style_var(outpost_arn)}.")
+        Console().print(f"{style_var('✓', color='green')} Using the Outpost with ARN {style_var(outpost_arn)}.")
 
         # Find the local gateway ID associated with the Outpost ARN
+        Console().print("Retrieving the local gateway route table associated with the Outpost...")
         local_gateway_route_tables = paginate_aws_response(
             ec2_client.describe_local_gateway_route_tables,
             "LocalGatewayRouteTables",
             Filters=[{"Name": "outpost-arn", "Values": [outpost_arn]}],
         )
         local_gateway_route_table_id = local_gateway_route_tables[0]["LocalGatewayRouteTableId"]
-        Console().print(f"Using local gateway route table with ID: {style_var(local_gateway_route_table_id)}.")
+        Console().print(
+            f"{style_var('✓', color='green')} Using the local gateway route table with ID {style_var(local_gateway_route_table_id)}."
+        )
 
         # Find the CoIP pool ID associated with the local gateway ID
+        Console().print("Retrieving the Customer-owned IP (CoIP) pool associated with the Outpost...")
         coip_pools = paginate_aws_response(
             ec2_client.describe_coip_pools,
             "CoipPools",
             Filters=[{"Name": "coip-pool.local-gateway-route-table-id", "Values": [local_gateway_route_table_id]}],
         )
         coip_pool_id = coip_pools[0]["PoolId"]
-        Console().print(f"Using Customer-owned IP (CoIP) pool with ID: {style_var(coip_pool_id)}.")
+        Console().print(
+            f"{style_var('✓', color='green')} Using the Customer-owned IP (CoIP) pool with ID {style_var(coip_pool_id)}."
+        )
 
         # Allocate an elastic IPv4 address pool
+        Console().print(f"Allocating an elastic IP address from the CoIP pool {style_var(coip_pool_id)}...")
         allocate_address_response = ec2_client.allocate_address(CustomerOwnedIpv4Pool=coip_pool_id)
         allocation_id = allocate_address_response["AllocationId"]
         Console().print(
-            f"Allocated elastic IP address with allocation ID: {style_var(allocation_id)} from CoIP pool: {style_var(coip_pool_id)}."
+            f"{style_var('✓', color='green')} Successfully allocated the elastic IP address with allocation ID {style_var(allocation_id)} from the CoIP pool {style_var(coip_pool_id)}."
         )
 
         # Associate the IP pool with the network interface
+        Console().print(f"Associating the IP pool with the network interface {style_var(network_interface_id)}...")
         ec2_client.associate_address(AllocationId=allocation_id, NetworkInterfaceId=network_interface_id)
         Console().print(
-            f"Associated elastic IP address (allocation ID: {style_var(allocation_id)}) with network interface: {style_var(network_interface_id)}."
+            f"{style_var('✓', color='green')} Successfully associated the elastic IP address (allocation ID {style_var(allocation_id)}) with the network interface {style_var(network_interface_id)}."
         )
 
         return network_interface_id
@@ -813,7 +878,7 @@ def launch_instance(
         #  Launch instance response
         Console().print(Pretty(run_instances_response))
         Console().print(
-            f"Instance {style_var(run_instances_response['Instances'][0]['InstanceId'])} has been launched successfully."
+            f"{style_var('✓', color='green')} Successfully launched the instance {style_var(run_instances_response['Instances'][0]['InstanceId'])}."
         )
 
     except ClientError as e:

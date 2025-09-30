@@ -47,14 +47,17 @@ def validate_instance_type(
 
     if not instance_type:
         print_table_with_single_column(
-            "Available instance types for this Outpost", available_instance_types, column_name="Instance Type"
+            "Available instance types for this Outpost",
+            available_instance_types,
+            column_name="Instance Type",
+            sort_data=True,
         )
 
         instance_type = prompt_with_trim("Please enter an instance type", data_type=str)
 
     if instance_type not in available_instance_types:
         error_and_exit(
-            f"Instance type {style_var(instance_type, color='yellow')} is not available on this Outpost.",
+            f"The instance type {style_var(instance_type, color='yellow')} is not available on this Outpost.",
             code=ERR_AWS_INSTANCE_TYPE_UNSUPPORTED,
         )
 
@@ -85,6 +88,9 @@ def get_outpost_hardware_type(outposts_client: boto3.client, outpost_arn: str) -
     # On Outpost Servers, without an LNI an instance won't be able to connect to the
     # the on-premise network, which is not the VPC subnet that the instance will be
     # launched into.
+
+    Console().print("Retrieving Outpost details...")
+
     try:
         get_outpost_response = outposts_client.get_outpost(OutpostId=outpost_arn)
     except ClientError as e:
@@ -122,6 +128,8 @@ def get_available_instance_types(outposts_client: boto3.client, outpost_id: str)
         typer.Exit: If an AWS error occurs during the API call.
     """
 
+    Console().print("Retrieving available instance types for the Outpost...")
+
     # Use the paginate function to get all instance types
     instance_type_response_items = paginate_aws_response(
         outposts_client.get_outpost_instance_types, "InstanceTypes", OutpostId=outpost_id
@@ -131,5 +139,9 @@ def get_available_instance_types(outposts_client: boto3.client, outpost_id: str)
     available_instance_types = [
         instance_type_response_item["InstanceType"] for instance_type_response_item in instance_type_response_items
     ]
+
+    Console().print(
+        f"{style_var('✓', color='green')} Successfully retrieved {style_var(len(available_instance_types))} instance types."
+    )
 
     return available_instance_types

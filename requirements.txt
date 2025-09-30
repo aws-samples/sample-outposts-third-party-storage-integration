@@ -1,5 +1,6 @@
 boto3>=1.38.16
 chevron>=0.14.0
+natsort>=8.4.0
 netapp-ontap>=9.16.1.0
 py-pure-client>=1.67.2
 PyPowerStore>=3.4.1
